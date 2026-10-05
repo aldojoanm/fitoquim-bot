@@ -1,45 +1,91 @@
 <!doctype html>
 <html lang="es">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="robots" content="noindex" />
-    <title>Asistente FITOQUIM</title>
-    <link rel="stylesheet" href="./chat.css" />
-  </head>
-  <body>
-    <main class="chat">
-      <header class="chat__cabecera">
-        <div class="chat__marca">F</div>
-        <div>
-          <h1>FITOQUIM</h1>
-          <p>Asistente virtual</p>
+<head>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1"
+  />
+  <meta
+    name="theme-color"
+    content="#0b5da6"
+  />
+  <title>FITOQUIM</title>
+  <link
+    rel="stylesheet"
+    href="/chat/chat.css"
+  />
+</head>
+<body>
+  <main class="chat">
+    <header class="cabecera">
+      <div class="marca">
+        <div class="marca-icono">
+          F
         </div>
-        <span class="chat__estado"><i aria-hidden="true"></i> En línea</span>
-      </header>
 
-      <section
-        id="mensajes"
-        class="chat__mensajes"
-        aria-live="polite"
-        aria-label="Conversación"
-      ></section>
+        <div class="marca-textos">
+          <strong>FITOQUIM</strong>
 
-      <footer class="chat__pie">
-      <button id="volver-menu" class="chat__volver" type="button">↩ Volver al menú</button>
-      <form id="formulario" class="chat__entrada" autocomplete="off">
+          <div class="estado">
+            <span
+              class="estado-punto"
+            ></span>
+            <span>En línea</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <section
+      id="mensajes"
+      class="mensajes"
+      aria-live="polite"
+    ></section>
+
+    <footer class="pie">
+      <button
+        id="volver-menu"
+        class="volver-menu"
+        type="button"
+      >
+        <span>↩</span>
+        Volver al menú
+      </button>
+
+      <form
+        id="formulario"
+        class="formulario"
+      >
         <input
-          id="texto"
+          id="entrada"
           type="text"
           maxlength="1000"
+          autocomplete="off"
           placeholder="Escriba su consulta..."
-          aria-label="Escriba su consulta"
         />
-        <button id="enviar" type="submit" aria-label="Enviar mensaje">Enviar</button>
-      </form>
-      </footer>
-    </main>
 
-    <script src="./chat.js" defer></script>
-  </body>
+        <button
+          id="enviar"
+          type="submit"
+          aria-label="Enviar"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path
+              d="M3.4 20.4 21.1 12 3.4 3.6l.1 6.5 12.2 1.9-12.2 1.9-.1 6.5Z"
+            />
+          </svg>
+        </button>
+      </form>
+    </footer>
+  </main>
+
+  <script
+    src="/chat/chat.js"
+    defer
+  ></script>
+</body>
 </html>

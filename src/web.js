@@ -1,63 +1,136 @@
 import express from 'express';
 
-import { iniciarConversacion, procesarEntrada } from './bot.js';
+import {
+  iniciarConversacion,
+  procesarEntrada,
+} from './bot.js';
 
 const router = express.Router();
 
-function sesionValida(valor = '') {
-  return /^[a-zA-Z0-9_-]{10,120}$/.test(String(valor || ''));
+function sesionValida(
+  valor = '',
+) {
+  return /^[a-zA-Z0-9_-]{10,120}$/.test(
+    String(valor || ''),
+  );
 }
 
-function responder(res, respuesta) {
+function prepararIdentificador(
+  req,
+  sesionId,
+) {
+  const ip = String(
+    req.ip ||
+    req.socket?.remoteAddress ||
+    'sin-ip',
+  );
+
+  return `${sesionId}:${ip}`;
+}
+
+function responder(
+  res,
+  respuesta,
+) {
   return res.json({
     ok: true,
-    respuesta: respuesta || null,
+    respuesta:
+      respuesta || null,
   });
 }
 
-router.post('/api/chat/iniciar', async (req, res, next) => {
-  try {
-    const sesionId = String(req.body?.sesionId || '').trim();
+router.post(
+  '/api/chat/iniciar',
+  (req, res, next) => {
+    try {
+      const sesionId =
+        String(
+          req.body?.sesionId ||
+          '',
+        ).trim();
 
-    if (!sesionValida(sesionId)) {
-      return res.status(400).json({
-        ok: false,
-        error: 'sesion_invalida',
-      });
+      if (
+        !sesionValida(sesionId)
+      ) {
+        return res
+          .status(400)
+          .json({
+            ok: false,
+            error:
+              'sesion_invalida',
+          });
+      }
+
+      const identificador =
+        prepararIdentificador(
+          req,
+          sesionId,
+        );
+
+      const respuesta =
+        iniciarConversacion({
+          canal: 'web',
+          identificador,
+        });
+
+      return responder(
+        res,
+        respuesta,
+      );
+    } catch (error) {
+      return next(error);
     }
+  },
+);
 
-    const respuesta = iniciarConversacion({
-      canal: 'web',
-      identificador: sesionId,
-    });
+router.post(
+  '/api/chat/mensaje',
+  (req, res, next) => {
+    try {
+      const sesionId =
+        String(
+          req.body?.sesionId ||
+          '',
+        ).trim();
 
-    return responder(res, respuesta);
-  } catch (error) {
-    return next(error);
-  }
-});
+      const texto =
+        String(
+          req.body?.texto || '',
+        ).slice(0, 1000);
 
-router.post('/api/chat/mensaje', async (req, res, next) => {
-  try {
-    const sesionId = String(req.body?.sesionId || '').trim();
-    const texto = String(req.body?.texto || '').slice(0, 1000);
+      if (
+        !sesionValida(sesionId)
+      ) {
+        return res
+          .status(400)
+          .json({
+            ok: false,
+            error:
+              'sesion_invalida',
+          });
+      }
 
-    if (!sesionValida(sesionId)) {
-      return res.status(400).json({
-        ok: false,
-        error: 'sesion_invalida',
-      });
+      const identificador =
+        prepararIdentificador(
+          req,
+          sesionId,
+        );
+
+      const respuesta =
+        procesarEntrada({
+          canal: 'web',
+          identificador,
+          texto,
+        });
+
+      return responder(
+        res,
+        respuesta,
+      );
+    } catch (error) {
+      return next(error);
     }
-
-    const respuesta = procesarEntrada({
-      canal: 'web',
-      identificador: sesionId,
-      texto,
-    });
-    return responder(res, respuesta);
-  } catch (error) {
-    return next(error);
-  }
-});
+  },
+);
 
 export default router;
