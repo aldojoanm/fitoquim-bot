@@ -67,6 +67,7 @@ function construirNodo(id, sesion, textoAlternativo) {
     sesion.nodoActual = id;
     return {
       tipo: 'opciones', nodoId: id, texto: textoAlternativo || nodo.texto,
+      textoDespuesContacto: nodo.texto_despues_contacto || '',
       textoBotonLista: nodo.texto_boton_lista || 'Ver opciones',
       opciones: nodo.opciones.map((opcion) => ({
         id: opcion.id, etiqueta: opcion.etiqueta,
@@ -85,24 +86,20 @@ function construirNodo(id, sesion, textoAlternativo) {
   const zona = nodo.zona || '';
   const cargo = area === 'tecnico' ? 'Asesoramiento técnico' : contacto.cargo || 'Asesor comercial';
   const contexto = area === 'productos' ? {
-    texto: `Te compartimos el contacto de ${contacto.nombre}, del área de Ventas Corporativas.`,
     mensaje: 'Quisiera recibir información sobre sus productos.',
   } : area === 'tecnico' ? {
-    texto: `Te compartimos el contacto de ${contacto.nombre} para asesoramiento técnico.`,
     mensaje: 'Necesito asesoramiento técnico.',
   } : {
-    texto: `Tu contacto comercial${zona ? ` para ${zona}` : ''} es ${contacto.nombre}.`,
     mensaje: `Necesito atención comercial${zona ? ` para ${zona}` : ''}.`,
   };
   const fotoWhatsApp = (contacto.foto || '').replace(/\.webp$/i, '.jpg');
   const tieneFotoWhatsApp = /^\/asesores\/[^/]+\.(jpg|jpeg|png)$/i.test(fotoWhatsApp)
     && fs.existsSync(new URL(fotoWhatsApp.slice(1), RUTA_PUBLICA));
   return {
-    tipo: 'contacto', texto: contexto.texto, contacto: {
+    tipo: 'contacto', texto: nodo.texto || '', menu: construirNodo('inicio', sesion), contacto: {
       id: contacto.id, nombre: contacto.nombre, cargo,
       foto: contacto.foto || '',
       fotoWhatsApp: tieneFotoWhatsApp ? fotoWhatsApp : '',
-      caption: `${contacto.nombre} · ${cargo}`,
       mensajeWhatsApp: `Hola, vengo del asistente de FITOQUIM. ${contexto.mensaje}`,
       area, zona,
       empresa: contacto.empresa || configuracion.empresa.nombre_legal,
@@ -160,11 +157,21 @@ function limpiarUso(registro, ahora) {
   registro.respuestas = registro.respuestas.filter((item) => ahora - item.momento < DIA_MS);
 }
 
+function limitesWhatsAppActivos() {
+  const valor = normalizar(process.env.LIMITES_WHATSAPP_ACTIVOS ?? 'true');
+  if (['false', '0', 'no', 'off'].includes(valor)) return false;
+  if (['true', '1', 'yes', 'si', 'on'].includes(valor)) return true;
+  return true;
+}
+
 function responder({ canal = 'web', identificador, texto = '', esInicio = false }) {
   if (!identificador) throw new Error('Falta identificador de conversación.');
   recargarConfiguracion();
   if (!esInicio && configuracion.sin_respuesta.some((item) => normalizar(item) === normalizar(texto))) return null;
   const clave = canal + ':' + identificador;
+  if (canal === 'whatsapp' && !limitesWhatsAppActivos()) {
+    return prepararRespuesta(texto, obtenerSesion(clave), esInicio);
+  }
   const ahora = Date.now();
   let registro = usoPorUsuario.get(clave);
   if (!registro) {
@@ -178,7 +185,7 @@ function responder({ canal = 'web', identificador, texto = '', esInicio = false 
   const sesion = obtenerSesion(clave);
   const nodoAnterior = sesion.nodoActual;
   const propuesta = prepararRespuesta(texto, sesion, esInicio);
-  const cantidad = canal === 'whatsapp' && propuesta.tipo === 'contacto' ? 2 + (propuesta.contacto.fotoWhatsApp ? 1 : 0) : 1;
+  const cantidad = canal === 'whatsapp' && propuesta.tipo === 'contacto' ? 2 : 1;
   let bloqueoHasta = 0;
   const excesoDiario = registro.respuestas.length + cantidad - limites.respuestas_24_horas;
   const excesoRapido = recientes.length + cantidad - limites.respuestas_5_minutos;

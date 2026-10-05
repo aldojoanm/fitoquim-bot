@@ -125,12 +125,12 @@
   "flujo": {
     "inicio": {
       "tipo": "opciones",
-      "texto": "Hola 👋 Bienvenido a FITOQUIM. ¿En qué podemos ayudarle?",
+      "texto": "Hola. Bienvenido a Fitoquim. ¿En qué podemos ayudarle?",
       "presentacion_whatsapp": "botones",
       "opciones": [
         {
           "id": "productos",
-          "etiqueta": "Conocer productos",
+          "etiqueta": "Conocer nuestros productos",
           "destino": "productos",
           "alias": [
             "productos",
@@ -138,8 +138,10 @@
             "catalogo",
             "catálogo",
             "conocer productos",
-            "nuestros productos"
-          ]
+            "nuestros productos",
+            "conocer nuestros productos"
+          ],
+          "etiqueta_whatsapp": "Conocer productos"
         },
         {
           "id": "tecnico",
@@ -167,7 +169,8 @@
             "cotizar"
           ]
         }
-      ]
+      ],
+      "texto_despues_contacto": "¿Qué desea consultar?"
     },
     "tipo_asesor": {
       "tipo": "opciones",
@@ -200,15 +203,17 @@
     },
     "productos": {
       "tipo": "contacto",
-      "contacto_id": "lindsey_vieria"
+      "contacto_id": "lindsey_vieria",
+      "texto": "Perfecto, lo derivaremos con la persona de Ventas Corporativas, quien podrá brindarle información sobre nuestros productos."
     },
     "tecnico": {
       "tipo": "contacto",
-      "contacto_id": "luis_castro"
+      "contacto_id": "luis_castro",
+      "texto": "Perfecto, lo derivaremos con la persona del área de Desarrollo, quien podrá orientarlo técnicamente."
     },
     "comercial_zonas": {
       "tipo": "opciones",
-      "texto": "Perfecto. ¿En qué zona requiere atención comercial?",
+      "texto": "Perfecto, ¿En qué zona requiere atención comercial?",
       "presentacion_whatsapp": "lista",
       "texto_boton_lista": "Seleccionar zona",
       "opciones": [
@@ -366,52 +371,62 @@
     "comercial_norte_directo": {
       "tipo": "contacto",
       "contacto_id": "guiscela_hurtado",
-      "zona": "Zona Norte · Directo"
+      "zona": "Zona Norte · Directo",
+      "texto": "Tu contacto comercial para Zona Norte · Directo es Guiscela Hurtado."
     },
     "comercial_norte_distribuidor": {
       "tipo": "contacto",
       "contacto_id": "marco",
-      "zona": "Zona Norte · Distribuidor"
+      "zona": "Zona Norte · Distribuidor",
+      "texto": "Tu contacto comercial para Zona Norte · Distribuidor es Marcos Gutierrez."
     },
     "comercial_norte_montero_yapacani": {
       "tipo": "contacto",
       "contacto_id": "maira_cadima",
-      "zona": "Montero / Yapacaní"
+      "zona": "Montero / Yapacaní",
+      "texto": "Tu contacto comercial para Montero / Yapacaní es Maira Cadima Fitoquim SRL."
     },
     "comercial_este_4_canadas": {
       "tipo": "contacto",
       "contacto_id": "darwin_salvatierra",
-      "zona": "4 Cañadas"
+      "zona": "4 Cañadas",
+      "texto": "Tu contacto comercial para 4 Cañadas es Darwin Salvatierra."
     },
     "comercial_este_transcontinental_este": {
       "tipo": "contacto",
       "contacto_id": "manuel_mendoza",
-      "zona": "Transcontinental Este"
+      "zona": "Transcontinental Este",
+      "texto": "Tu contacto comercial para Transcontinental Este es Manuel Mendoza."
     },
     "comercial_este_transcontinental_sur": {
       "tipo": "contacto",
       "contacto_id": "roberth",
-      "zona": "Transcontinental Sur"
+      "zona": "Transcontinental Sur",
+      "texto": "Tu contacto comercial para Transcontinental Sur es Roberth Ferrufino."
     },
     "comercial_este_san_julian_okinawa": {
       "tipo": "contacto",
       "contacto_id": "sergio_gutierrez",
-      "zona": "San Julián / Okinawa"
+      "zona": "San Julián / Okinawa",
+      "texto": "Tu contacto comercial para San Julián / Okinawa es Sergio Gutierrez."
     },
     "comercial_este_guarayos_beni": {
       "tipo": "contacto",
       "contacto_id": "manuel_paredes",
-      "zona": "Guarayos / Beni"
+      "zona": "Guarayos / Beni",
+      "texto": "Tu contacto comercial para Guarayos / Beni es Manuel Paredes."
     },
     "comercial_chiquitania": {
       "tipo": "contacto",
       "contacto_id": "jorge_rojo",
-      "zona": "Chiquitania"
+      "zona": "Chiquitania",
+      "texto": "Tu contacto comercial para Chiquitania es Jorge Rojo."
     },
     "comercial_valles_chapare": {
       "tipo": "contacto",
       "contacto_id": "maira_cadima",
-      "zona": "Valles / Chapare"
+      "zona": "Valles / Chapare",
+      "texto": "Tu contacto comercial para Valles / Chapare es Maira Cadima Fitoquim SRL."
     }
   },
   "preguntas_frecuentes": [
@@ -539,7 +554,8 @@
         "conocer productos",
         "nuestros productos",
         "catologo",
-        "produtos"
+        "produtos",
+        "conocer nuestros productos"
       ]
     },
     {

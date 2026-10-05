@@ -78,6 +78,7 @@ button:focus-visible, a:focus-visible { outline: 3px solid var(--acento); outlin
 .opciones { display: grid; gap: 9px; margin: 2px 0 20px; }
 .opcion {
   position: relative;
+  animation: aparecer 180ms ease-out both;
   width: 100%;
   padding: 14px 34px 14px 15px;
   border: 1px solid #d7e6f2;
@@ -95,25 +96,21 @@ button:focus-visible, a:focus-visible { outline: 3px solid var(--acento); outlin
 .contacto {
   position: relative;
   margin: 0 0 20px;
-  padding: 20px;
+  padding: 0;
+  overflow: hidden;
   border: 1px solid #d8e7f2;
   border-radius: 18px;
   background: white;
   box-shadow: 0 8px 24px #0b5da609;
   transition: box-shadow 160ms, border-color 160ms;
 }
-.contacto::before { content: ''; position: absolute; top: 0; left: 20px; right: 20px; height: 3px; border-radius: 0 0 3px 3px; background: linear-gradient(90deg, var(--primario), var(--acento)); }
-.contacto__principal { display: flex; align-items: center; gap: 13px; }
-.contacto__principal > div:last-child { min-width: 0; }
-.contacto__iniciales { flex: 0 0 auto; width: 58px; height: 58px; display: grid; place-items: center; border-radius: 16px; background: #eaf5fb; color: var(--primario); font-weight: 750; overflow: hidden; }
-.contacto__foto { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center 35%; }
+.contacto__foto { display: block; width: 100%; height: clamp(240px, 65vw, 300px); object-fit: cover; object-position: center 28%; }
+.contacto__contenido { padding: 20px; }
+.contacto .contacto__texto { margin: 0 0 18px; color: #203348; font-size: 13px; line-height: 1.65; }
 .contacto h2 { margin: 0; color: #163652; font-size: 15px; line-height: 1.4; }
 .contacto p { margin: 4px 0 0; color: var(--texto-secundario); font-size: 11px; line-height: 1.5; }
 .contacto__numero { margin-top: 17px; padding-top: 14px; border-top: 1px solid #edf2f7; color: #385772; font-size: 13px; font-weight: 600; letter-spacing: .3px; }
-.contacto__acciones { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
-.contacto__acciones a, .contacto__acciones button { display: grid; place-items: center; min-height: 42px; padding: 9px 7px; border-radius: 10px; cursor: pointer; text-decoration: none; font-weight: 650; font-size: 11px; transition: background 140ms, transform 140ms, box-shadow 140ms; }
-.contacto__whatsapp { border: 1px solid var(--primario); color: white; background: var(--primario); box-shadow: 0 4px 10px #0b5da61a; }
-.contacto__guardar { border: 1px solid var(--borde); color: var(--primario); background: #f7fbfe; }
+.contacto__whatsapp { display: grid; place-items: center; width: 100%; min-height: 44px; margin-top: 16px; padding: 12px; border: 1px solid var(--primario); border-radius: 11px; color: white; background: var(--primario); font-size: 13px; font-weight: 650; text-decoration: none; transition: background 140ms; }
 .chat__pie { padding: 10px 14px 14px; border-top: 1px solid var(--borde); background: white; }
 .chat__volver { display: block; margin: 0 auto 9px; padding: 6px 12px; border: 0; border-radius: 8px; color: var(--primario); background: transparent; font-size: 12px; font-weight: 550; cursor: pointer; transition: background 140ms; }
 .chat__entrada { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
@@ -133,9 +130,9 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 @media (hover: hover) {
   .opcion:hover:not(:disabled) { border-color: var(--acento); background: #f1f9fd; transform: translateY(-1px); box-shadow: 0 4px 12px #0b5da60b; }
   .contacto:hover { border-color: #bad9ec; box-shadow: 0 10px 26px #0b5da610; }
-  .contacto__whatsapp:hover, .chat__entrada button:hover:not(:disabled) { background: #084d8b; }
-  .contacto__guardar:hover, .chat__volver:hover:not(:disabled) { background: #edf6fc; }
-}
+  .contacto__whatsapp:hover, .chat__entrada button:hover:not(:disabled) { background: var(--secundario); }
+  .chat__volver:hover:not(:disabled) { background: #edf6fc; }
+  }
 @media (max-width: 520px) {
   body { display: block; padding: 0; background: white; }
   .chat { width: 100%; height: 100dvh; border: 0; border-radius: 0; box-shadow: none; }

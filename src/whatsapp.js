@@ -1,7 +1,5 @@
 import crypto from 'crypto';
 import express from 'express';
-import fs from 'node:fs/promises';
-import { File } from 'node:buffer';
 
 import { procesarEntrada, cancelarRespuesta, confirmarEnvio } from './bot.js';
 
@@ -13,7 +11,7 @@ const ID_NUMERO_TELEFONO = process.env.META_PHONE_NUMBER_ID || '';
 export const ID_CUENTA_WHATSAPP = process.env.META_WABA_ID || '';
 const VERSION_API = process.env.META_API_VERSION || 'v24.0';
 const SECRETO_APP = process.env.META_APP_SECRET || '';
-const imagenesSubidas = new Map();
+const URL_PUBLICA_BOT = String(process.env.URL_PUBLICA_BOT || '').trim();
 const enviosPorNumero = new Map();
 
 const mensajesProcesados = [];
@@ -107,6 +105,9 @@ async function enviarTexto(numeroDestino, texto) {
 }
 
 async function enviarBotones(numeroDestino, texto, opciones) {
+  // Meta limita los títulos a 20 caracteres; mostrar los nombres completos en el cuerpo.
+  const etiquetasLargas = (opciones || []).some((opcion) => opcion.etiqueta.length > 20);
+  const cuerpoTexto = etiquetasLargas ? texto + '\n\n' + opciones.map((opcion) => opcion.etiqueta).join('\n') : texto;
   const botones = (opciones || []).slice(0, 3).map((opcion) => ({
     type: 'reply',
     reply: {
@@ -123,7 +124,7 @@ async function enviarBotones(numeroDestino, texto, opciones) {
     interactive: {
       type: 'button',
       body: {
-        text: String(texto || '').slice(0, 1024),
+        text: String(cuerpoTexto || '').slice(0, 1024),
       },
       action: {
         buttons: botones,
@@ -164,63 +165,40 @@ async function enviarLista(numeroDestino, texto, textoBoton, opciones) {
   });
 }
 
-async function enviarContacto(numeroDestino, contacto) {
-  const telefono = normalizarTelefono(contacto?.telefonoDigitos || contacto?.telefono);
-
-  if (!telefono) {
-    throw new Error(`El contacto ${contacto?.nombre || ''} no tiene teléfono válido.`);
-  }
-
-  return llamarApiWhatsApp({
-    messaging_product: 'whatsapp',
-    recipient_type: 'individual',
-    to: normalizarTelefono(numeroDestino),
-    type: 'contacts',
-    contacts: [
-      {
-        name: {
-          formatted_name: String(contacto.nombre || 'FITOQUIM').slice(0, 256),
-          first_name: String(contacto.nombre || 'FITOQUIM').slice(0, 256),
-        },
-        org: {
-          company: String(contacto.empresa || 'FITOQUIM SRL').slice(0, 256),
-          title: String(contacto.cargo || '').slice(0, 256),
-        },
-        phones: [
-          {
-            phone: contacto.telefono,
-            wa_id: telefono,
-            type: 'CELL',
-          },
-        ],
+async function enviarContactoInteractivo(numeroDestino, respuesta) {
+  const contacto = respuesta.contacto;
+  const interactive = {
+    type: 'cta_url',
+    body: { text: [respuesta.texto, '', contacto.nombre, contacto.cargo].filter((parte) => parte !== undefined).join('\n') },
+    action: {
+      name: 'cta_url',
+      parameters: {
+        display_text: 'Contactar',
+        url: 'https://wa.me/' + contacto.telefonoDigitos + '?text=' + encodeURIComponent(contacto.mensajeWhatsApp),
       },
-    ],
-  });
-}
-
-async function enviarImagen(numeroDestino, contacto) {
-  const ruta = new URL('../public' + contacto.fotoWhatsApp, import.meta.url);
-  const datosArchivo = await fs.stat(ruta);
-  let imagen = imagenesSubidas.get(contacto.fotoWhatsApp);
-  if (!imagen || imagen.modificacion !== datosArchivo.mtimeMs || imagen.expiraEn <= Date.now()) {
-    const formulario = new FormData();
-    formulario.set('messaging_product', 'whatsapp');
-    const tipo = contacto.fotoWhatsApp.endsWith('.png') ? 'image/png' : 'image/jpeg';
-    formulario.set('file', new File([await fs.readFile(ruta)], 'asesor' + (tipo === 'image/png' ? '.png' : '.jpg'), { type: tipo }));
-    const subida = await fetch(`https://graph.facebook.com/${VERSION_API}/${ID_NUMERO_TELEFONO}/media`, {
-      method: 'POST', headers: { Authorization: `Bearer ${TOKEN_ACCESO}` },
-      body: formulario, signal: AbortSignal.timeout(12_000),
-    });
-    if (!subida.ok) throw new Error(`WhatsApp media: error HTTP ${subida.status}`);
-    const datos = await subida.json();
-    if (!datos.id) throw new Error('WhatsApp no devolvió un ID de imagen.');
-    imagen = { id: datos.id, modificacion: datosArchivo.mtimeMs, expiraEn: Date.now() + 20 * 24 * 60 * 60 * 1000 };
-    imagenesSubidas.set(contacto.fotoWhatsApp, imagen);
+    },
+  };
+  if (contacto.fotoWhatsApp && URL_PUBLICA_BOT) {
+    try {
+      const base = new URL(URL_PUBLICA_BOT);
+      if (base.protocol !== 'https:') throw new Error('URL_PUBLICA_BOT debe usar HTTPS.');
+      interactive.header = { type: 'image', image: { link: new URL(contacto.fotoWhatsApp, base).href } };
+    } catch (error) {
+      console.warn('[FITOQUIM] Foto pública no disponible:', error.message);
+    }
   }
-  return llamarApiWhatsApp({
+  const cuerpo = {
     messaging_product: 'whatsapp', recipient_type: 'individual', to: normalizarTelefono(numeroDestino),
-    type: 'image', image: { id: imagen.id, caption: contacto.caption },
-  });
+    type: 'interactive', interactive,
+  };
+  try {
+    await llamarApiWhatsApp(cuerpo);
+  } catch (error) {
+    console.error('[FITOQUIM] Error enviando CTA de contacto:', error.message);
+    if (!interactive.header) throw error;
+    delete interactive.header;
+    await llamarApiWhatsApp(cuerpo);
+  }
 }
 
 async function enviarRespuesta(numeroDestino, respuesta) {
@@ -233,18 +211,9 @@ async function enviarRespuesta(numeroDestino, respuesta) {
   }
 
   if (respuesta.tipo === 'contacto') {
-    await enviarTexto(numeroDestino, respuesta.texto + '\n\nEscribí “menú” para volver al inicio.');
+    await enviarContactoInteractivo(numeroDestino, respuesta);
     confirmarEnvio(respuesta);
-    if (respuesta.contacto.fotoWhatsApp) {
-      try {
-        await enviarImagen(numeroDestino, respuesta.contacto);
-        confirmarEnvio(respuesta);
-      } catch {
-        imagenesSubidas.delete(respuesta.contacto.fotoWhatsApp);
-        console.warn('[FITOQUIM] No se pudo enviar la foto del asesor. Se continúa con su contacto.');
-      }
-    }
-    await enviarContacto(numeroDestino, respuesta.contacto);
+    await enviarRespuesta(numeroDestino, respuesta.menu);
     confirmarEnvio(respuesta);
     return;
   }
@@ -324,7 +293,7 @@ async function responderMensaje(mensaje) {
 function procesarMensaje(mensaje) {
   const numero = normalizarTelefono(mensaje?.from);
   if (!numero) return Promise.resolve();
-  // Mantener juntos texto, foto y tarjeta aunque lleguen mensajes simultáneos.
+  // Mantener juntos la tarjeta CTA y el menú aunque lleguen mensajes simultáneos.
   const anterior = enviosPorNumero.get(numero) || Promise.resolve();
   const envio = anterior.catch(() => {}).then(() => responderMensaje(mensaje));
   enviosPorNumero.set(numero, envio);

@@ -74,95 +74,39 @@ function agregarEstado(texto) {
   return estado;
 }
 
-function iniciales(nombre = '') {
-  return String(nombre)
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((parte) => parte[0]?.toUpperCase() || '')
-    .join('') || 'F';
-}
-
-function descargarVcard(contacto) {
-  const escapar = (valor = '') => String(valor).replace(/\\/g, '\\\\').replace(/\r?\n/g, '\\n').replace(/[,;]/g, '\\$&');
-  const contenido = [
-    'BEGIN:VCARD',
-    'VERSION:3.0',
-    `FN:${escapar(contacto.nombre)}`,
-    `ORG:${escapar(contacto.empresa || 'FITOQUIM SRL')}`,
-    contacto.cargo ? `TITLE:${escapar(contacto.cargo)}` : '',
-    `TEL;TYPE=CELL:${contacto.telefono}`,
-    'END:VCARD',
-  ]
-    .filter(Boolean)
-    .join('\r\n') + '\r\n';
-
-  const archivo = new Blob([contenido], { type: 'text/vcard;charset=utf-8' });
-  const url = URL.createObjectURL(archivo);
-  const enlace = document.createElement('a');
-  enlace.href = url;
-  enlace.download = `${contacto.nombre.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ_-]+/g, '-')}.vcf`;
-  document.body.appendChild(enlace);
-  enlace.click();
-  enlace.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-function agregarContacto(contacto) {
+function agregarContacto(respuesta) {
+  const contacto = respuesta.contacto;
   const tarjeta = document.createElement('article');
   tarjeta.className = 'contacto';
-
-  const principal = document.createElement('div');
-  principal.className = 'contacto__principal';
-
-  const avatar = document.createElement('div');
-  avatar.className = 'contacto__iniciales';
-  avatar.textContent = iniciales(contacto.nombre);
   if (contacto.foto) {
     const foto = document.createElement('img');
     foto.className = 'contacto__foto';
     foto.src = contacto.foto;
     foto.alt = contacto.nombre;
     foto.loading = 'lazy';
-    foto.width = 48;
-    foto.height = 48;
-    foto.addEventListener('error', () => { avatar.textContent = iniciales(contacto.nombre); });
-    avatar.replaceChildren(foto);
+    foto.addEventListener('error', () => foto.remove());
+    tarjeta.appendChild(foto);
   }
-
-  const info = document.createElement('div');
-
+  const contenido = document.createElement('div');
+  contenido.className = 'contacto__contenido';
+  const texto = document.createElement('p');
+  texto.className = 'contacto__texto';
+  texto.textContent = respuesta.texto;
   const nombre = document.createElement('h2');
   nombre.textContent = contacto.nombre;
-
   const cargo = document.createElement('p');
-  cargo.textContent = contacto.cargo || contacto.empresa || 'FITOQUIM SRL';
-
-  info.append(nombre, cargo);
-  principal.append(avatar, info);
-
+  cargo.textContent = contacto.cargo;
   const numero = document.createElement('div');
   numero.className = 'contacto__numero';
   numero.textContent = contacto.telefono;
-
-  const acciones = document.createElement('div');
-  acciones.className = 'contacto__acciones';
-
   const whatsapp = document.createElement('a');
   whatsapp.className = 'contacto__whatsapp';
-  whatsapp.href = `https://wa.me/${contacto.telefonoDigitos}?text=${encodeURIComponent(contacto.mensajeWhatsApp || 'Hola, vengo del asistente de FITOQUIM.')}`;
+  whatsapp.href = 'https://wa.me/' + contacto.telefonoDigitos + '?text=' + encodeURIComponent(contacto.mensajeWhatsApp);
   whatsapp.target = '_blank';
   whatsapp.rel = 'noopener noreferrer';
-  whatsapp.textContent = 'WhatsApp';
-
-  const guardar = document.createElement('button');
-  guardar.type = 'button';
-  guardar.className = 'contacto__guardar';
-  guardar.textContent = 'Guardar contacto';
-  guardar.addEventListener('click', () => descargarVcard(contacto));
-
-  acciones.append(whatsapp, guardar);
-  tarjeta.append(principal, numero, acciones);
+  whatsapp.textContent = 'Contactar por WhatsApp';
+  contenido.append(texto, nombre, cargo, numero, whatsapp);
+  tarjeta.appendChild(contenido);
   mensajes.appendChild(tarjeta);
   desplazarAbajo();
 }
@@ -173,14 +117,16 @@ function bloquearOpcionesAnteriores() {
   });
 }
 
-function agregarOpciones(opciones = []) {
+function agregarOpciones(opciones = [], nodoId = "") {
   const contenedor = document.createElement('div');
   contenedor.className = 'opciones';
+  contenedor.dataset.nodoId = nodoId;
 
-  opciones.forEach((opcion) => {
+  opciones.forEach((opcion, indice) => {
     const boton = document.createElement('button');
     boton.type = 'button';
     boton.className = 'opcion';
+    boton.style.animationDelay = (indice * 35) + 'ms';
 
     const titulo = document.createElement('strong');
     titulo.textContent = opcion.etiqueta;
@@ -216,14 +162,16 @@ function renderizarRespuesta(respuesta) {
   }
 
   if (respuesta.tipo === 'contacto') {
-    if (respuesta.texto) agregarMensaje(respuesta.texto, 'bot');
-    agregarContacto(respuesta.contacto);
+    agregarContacto(respuesta);
+    if (respuesta.menu && !mensajes.querySelector('.opciones[data-nodo-id="inicio"] .opcion:not(:disabled)')) {
+      renderizarRespuesta({ ...respuesta.menu, texto: respuesta.menu.textoDespuesContacto || respuesta.menu.texto });
+    }
     return;
   }
 
   if (respuesta.tipo === 'opciones') {
     agregarMensaje(respuesta.texto, 'bot');
-    agregarOpciones(respuesta.opciones || []);
+    agregarOpciones(respuesta.opciones || [], respuesta.nodoId);
     return;
   }
 
@@ -264,7 +212,7 @@ async function enviarAlBot(texto, volverMenu = false) {
     const [datos] = await Promise.all([peticion('/api/chat/mensaje', {
       sesionId,
       texto,
-    }), new Promise((resolve) => setTimeout(resolve, reducirMovimiento || volverMenu ? 0 : 320))]);
+    }), new Promise((resolve) => setTimeout(resolve, reducirMovimiento || volverMenu ? 0 : 420))]);
 
     estado.remove();
     renderizarRespuesta(datos.respuesta);
@@ -303,7 +251,7 @@ async function iniciar() {
 
   try {
     const [datos] = await Promise.all([peticion('/api/chat/iniciar', { sesionId }),
-      new Promise((resolve) => setTimeout(resolve, reducirMovimiento ? 0 : 250))]);
+      new Promise((resolve) => setTimeout(resolve, reducirMovimiento ? 0 : 350))]);
     estado.remove();
     renderizarRespuesta(datos.respuesta);
   } catch (error) {
