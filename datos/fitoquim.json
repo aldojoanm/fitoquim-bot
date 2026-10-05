@@ -1,0 +1,719 @@
+{
+  "empresa": {
+    "nombre": "FITOQUIM",
+    "nombre_legal": "FITOQUIM SRL",
+    "codigo_pais": "591",
+    "horario": {
+      "habilitado": false,
+      "texto": ""
+    },
+    "ubicacion": {
+      "habilitado": false,
+      "direccion": "",
+      "google_maps": ""
+    }
+  },
+  "limites": {
+    "whatsapp": {
+      "respuestas_24_horas": 15,
+      "respuestas_5_minutos": 6
+    },
+    "web": {
+      "respuestas_24_horas": 80,
+      "respuestas_5_minutos": 20
+    }
+  },
+  "contactos": {
+    "carlos_corp": {
+      "id": "carlos_corp",
+      "nombre": "Carlos Corp",
+      "cargo": "Ventas Corporativas",
+      "empresa": "FITOQUIM SRL",
+      "telefono": "+59178464015",
+      "configurado": true
+    },
+    "luis_castro": {
+      "id": "luis_castro",
+      "nombre": "Luis Castro",
+      "cargo": "Área de Desarrollo",
+      "empresa": "FITOQUIM SRL",
+      "telefono": "+59177661215",
+      "configurado": true
+    },
+    "guiscela_hurtado": {
+      "id": "guiscela_hurtado",
+      "nombre": "Guiscela Hurtado",
+      "cargo": "Atención comercial",
+      "empresa": "FITOQUIM SRL",
+      "telefono": "+59175687684",
+      "configurado": true
+    },
+    "marco": {
+      "id": "marco",
+      "nombre": "Marco",
+      "cargo": "Atención comercial - Distribuidor",
+      "empresa": "FITOQUIM SRL",
+      "telefono": "",
+      "configurado": false
+    },
+    "maira_cadima": {
+      "id": "maira_cadima",
+      "nombre": "Maira Cadima",
+      "cargo": "Atención comercial",
+      "empresa": "FITOQUIM SRL",
+      "telefono": "+59178515896",
+      "configurado": true
+    },
+    "darwin_salvatierra": {
+      "id": "darwin_salvatierra",
+      "nombre": "Darwin Salvatierra",
+      "cargo": "Atención comercial",
+      "empresa": "FITOQUIM SRL",
+      "telefono": "+59169090935",
+      "configurado": true
+    },
+    "manuel_mendoza": {
+      "id": "manuel_mendoza",
+      "nombre": "Manuel Mendoza",
+      "cargo": "Atención comercial",
+      "empresa": "FITOQUIM SRL",
+      "telefono": "+59169002065",
+      "configurado": true
+    },
+    "roberth": {
+      "id": "roberth",
+      "nombre": "Roberth",
+      "cargo": "Atención comercial - Transcontinental Sur",
+      "empresa": "FITOQUIM SRL",
+      "telefono": "",
+      "configurado": false
+    },
+    "sergio_gutierrez": {
+      "id": "sergio_gutierrez",
+      "nombre": "Sergio Gutierrez",
+      "cargo": "Atención comercial",
+      "empresa": "FITOQUIM SRL",
+      "telefono": "+59169006073",
+      "configurado": true
+    },
+    "manuel_paredes": {
+      "id": "manuel_paredes",
+      "nombre": "Manuel Paredes",
+      "cargo": "Atención comercial",
+      "empresa": "FITOQUIM SRL",
+      "telefono": "+59177661201",
+      "configurado": true
+    },
+    "jorge_rojo": {
+      "id": "jorge_rojo",
+      "nombre": "Jorge Rojo",
+      "cargo": "Atención comercial",
+      "empresa": "FITOQUIM SRL",
+      "telefono": "+59177661217",
+      "configurado": true
+    }
+  },
+  "flujo": {
+    "inicio": {
+      "tipo": "opciones",
+      "texto": "Hola 👋 Bienvenido a FITOQUIM. ¿En qué podemos ayudarle?",
+      "presentacion_whatsapp": "botones",
+      "opciones": [
+        {
+          "id": "productos",
+          "etiqueta": "Productos",
+          "destino": "productos",
+          "alias": [
+            "productos",
+            "producto",
+            "catalogo",
+            "catálogo",
+            "conocer productos",
+            "nuestros productos"
+          ]
+        },
+        {
+          "id": "tecnico",
+          "etiqueta": "Asesoría técnica",
+          "destino": "tecnico",
+          "alias": [
+            "asesoria tecnica",
+            "asesoría técnica",
+            "asesoramiento tecnico",
+            "asesoramiento técnico",
+            "tecnico",
+            "técnico"
+          ]
+        },
+        {
+          "id": "comercial",
+          "etiqueta": "Consulta comercial",
+          "destino": "comercial_zonas",
+          "alias": [
+            "consulta comercial",
+            "comercial",
+            "ventas",
+            "comprar",
+            "cotizar"
+          ]
+        }
+      ]
+    },
+    "tipo_asesor": {
+      "tipo": "opciones",
+      "texto": "¿Qué tipo de atención necesita?",
+      "presentacion_whatsapp": "botones",
+      "opciones": [
+        {
+          "id": "asesor_tecnico",
+          "etiqueta": "Asesoría técnica",
+          "destino": "tecnico",
+          "alias": [
+            "tecnico",
+            "técnico",
+            "asesor tecnico",
+            "asesor técnico"
+          ]
+        },
+        {
+          "id": "asesor_comercial",
+          "etiqueta": "Asesor comercial",
+          "destino": "comercial_zonas",
+          "alias": [
+            "comercial",
+            "asesor comercial",
+            "ventas"
+          ]
+        }
+      ]
+    },
+    "productos": {
+      "tipo": "contacto",
+      "contacto_id": "carlos_corp",
+      "metrica": {
+        "area": "Productos",
+        "zona": "",
+        "subzona": ""
+      }
+    },
+    "tecnico": {
+      "tipo": "contacto",
+      "contacto_id": "luis_castro",
+      "metrica": {
+        "area": "Asesoramiento técnico",
+        "zona": "",
+        "subzona": ""
+      }
+    },
+    "comercial_zonas": {
+      "tipo": "opciones",
+      "texto": "Perfecto. ¿En qué zona requiere atención comercial?",
+      "presentacion_whatsapp": "lista",
+      "texto_boton_lista": "Seleccionar zona",
+      "opciones": [
+        {
+          "id": "zona_norte",
+          "etiqueta": "Zona Norte",
+          "descripcion": "Directo, distribuidor o Montero / Yapacaní",
+          "destino": "comercial_norte",
+          "alias": [
+            "zona norte",
+            "norte"
+          ]
+        },
+        {
+          "id": "zona_este",
+          "etiqueta": "Zona Este",
+          "descripcion": "4 Cañadas, Transcontinental, San Julián y más",
+          "destino": "comercial_este",
+          "alias": [
+            "zona este",
+            "este"
+          ]
+        },
+        {
+          "id": "zona_chiquitania",
+          "etiqueta": "Zona Chiquitania",
+          "descripcion": "Atención comercial Chiquitania",
+          "destino": "comercial_chiquitania",
+          "alias": [
+            "zona chiquitania",
+            "chiquitania"
+          ]
+        },
+        {
+          "id": "zona_valles_chapare",
+          "etiqueta": "Valles / Chapare",
+          "descripcion": "Atención comercial Valles y Chapare",
+          "destino": "comercial_valles_chapare",
+          "alias": [
+            "valles",
+            "chapare",
+            "valles chapare",
+            "valles / chapare"
+          ]
+        }
+      ]
+    },
+    "comercial_norte": {
+      "tipo": "opciones",
+      "texto": "Seleccione el tipo de atención en Zona Norte:",
+      "presentacion_whatsapp": "botones",
+      "opciones": [
+        {
+          "id": "norte_directo",
+          "etiqueta": "Directo",
+          "destino": "comercial_norte_directo",
+          "alias": [
+            "directo",
+            "venta directa",
+            "cliente directo"
+          ]
+        },
+        {
+          "id": "norte_distribuidor",
+          "etiqueta": "Distribuidor",
+          "destino": "comercial_norte_distribuidor",
+          "alias": [
+            "distribuidor",
+            "distribucion",
+            "distribución"
+          ]
+        },
+        {
+          "id": "norte_montero_yapacani",
+          "etiqueta": "Montero / Yapacaní",
+          "destino": "comercial_norte_montero_yapacani",
+          "alias": [
+            "montero",
+            "yapacani",
+            "yapacaní",
+            "montero yapacani",
+            "montero yapacaní"
+          ]
+        }
+      ]
+    },
+    "comercial_este": {
+      "tipo": "opciones",
+      "texto": "Seleccione la zona de atención:",
+      "presentacion_whatsapp": "lista",
+      "texto_boton_lista": "Seleccionar zona",
+      "opciones": [
+        {
+          "id": "este_4_canadas",
+          "etiqueta": "4 Cañadas",
+          "descripcion": "Atención comercial 4 Cañadas",
+          "destino": "comercial_este_4_canadas",
+          "alias": [
+            "4 canadas",
+            "4 cañadas",
+            "cuatro canadas",
+            "cuatro cañadas"
+          ]
+        },
+        {
+          "id": "este_transcontinental_este",
+          "etiqueta": "Transcontinental Este",
+          "descripcion": "Atención comercial Transcontinental Este",
+          "destino": "comercial_este_transcontinental_este",
+          "alias": [
+            "transcontinental este",
+            "transcom este",
+            "trans este"
+          ]
+        },
+        {
+          "id": "este_transcontinental_sur",
+          "etiqueta": "Transcontinental Sur",
+          "descripcion": "Atención comercial Transcontinental Sur",
+          "destino": "comercial_este_transcontinental_sur",
+          "alias": [
+            "transcontinental sur",
+            "transcom sur",
+            "trans sur"
+          ]
+        },
+        {
+          "id": "este_san_julian_okinawa",
+          "etiqueta": "San Julián / Okinawa",
+          "descripcion": "Atención comercial San Julián y Okinawa",
+          "destino": "comercial_este_san_julian_okinawa",
+          "alias": [
+            "san julian",
+            "san julián",
+            "okinawa",
+            "okina",
+            "san julian okinawa",
+            "san julián okinawa"
+          ]
+        },
+        {
+          "id": "este_guarayos_beni",
+          "etiqueta": "Guarayos / Beni",
+          "descripcion": "Guarayos y departamento del Beni",
+          "destino": "comercial_este_guarayos_beni",
+          "alias": [
+            "guarayos",
+            "beni",
+            "guarayos beni",
+            "departamento beni"
+          ]
+        }
+      ]
+    },
+    "comercial_norte_directo": {
+      "tipo": "contacto",
+      "contacto_id": "guiscela_hurtado",
+      "metrica": {
+        "area": "Comercial",
+        "zona": "Zona Norte",
+        "subzona": "Directo"
+      }
+    },
+    "comercial_norte_distribuidor": {
+      "tipo": "contacto",
+      "contacto_id": "marco",
+      "metrica": {
+        "area": "Comercial",
+        "zona": "Zona Norte",
+        "subzona": "Distribuidor"
+      }
+    },
+    "comercial_norte_montero_yapacani": {
+      "tipo": "contacto",
+      "contacto_id": "maira_cadima",
+      "metrica": {
+        "area": "Comercial",
+        "zona": "Zona Norte",
+        "subzona": "Montero / Yapacaní"
+      }
+    },
+    "comercial_este_4_canadas": {
+      "tipo": "contacto",
+      "contacto_id": "darwin_salvatierra",
+      "metrica": {
+        "area": "Comercial",
+        "zona": "Zona Este",
+        "subzona": "4 Cañadas"
+      }
+    },
+    "comercial_este_transcontinental_este": {
+      "tipo": "contacto",
+      "contacto_id": "manuel_mendoza",
+      "metrica": {
+        "area": "Comercial",
+        "zona": "Zona Este",
+        "subzona": "Transcontinental Este"
+      }
+    },
+    "comercial_este_transcontinental_sur": {
+      "tipo": "contacto",
+      "contacto_id": "roberth",
+      "metrica": {
+        "area": "Comercial",
+        "zona": "Zona Este",
+        "subzona": "Transcontinental Sur"
+      }
+    },
+    "comercial_este_san_julian_okinawa": {
+      "tipo": "contacto",
+      "contacto_id": "sergio_gutierrez",
+      "metrica": {
+        "area": "Comercial",
+        "zona": "Zona Este",
+        "subzona": "San Julián / Okinawa"
+      }
+    },
+    "comercial_este_guarayos_beni": {
+      "tipo": "contacto",
+      "contacto_id": "manuel_paredes",
+      "metrica": {
+        "area": "Comercial",
+        "zona": "Zona Este",
+        "subzona": "Guarayos / Beni"
+      }
+    },
+    "comercial_chiquitania": {
+      "tipo": "contacto",
+      "contacto_id": "jorge_rojo",
+      "metrica": {
+        "area": "Comercial",
+        "zona": "Zona Chiquitania",
+        "subzona": ""
+      }
+    },
+    "comercial_valles_chapare": {
+      "tipo": "contacto",
+      "contacto_id": "maira_cadima",
+      "metrica": {
+        "area": "Comercial",
+        "zona": "Zona Valles / Chapare",
+        "subzona": ""
+      }
+    }
+  },
+  "preguntas_frecuentes": [
+    {
+      "id": "horario",
+      "habilitada": false,
+      "prioridad": 100,
+      "tipo": "horario",
+      "patrones": [
+        "horario",
+        "horarios",
+        "a que hora abren",
+        "a qué hora abren",
+        "hasta que hora atienden",
+        "hasta qué hora atienden",
+        "estan abiertos",
+        "están abiertos",
+        "atienden hoy"
+      ]
+    },
+    {
+      "id": "ubicacion",
+      "habilitada": false,
+      "prioridad": 100,
+      "tipo": "ubicacion",
+      "patrones": [
+        "ubicacion",
+        "ubicación",
+        "direccion",
+        "dirección",
+        "donde estan",
+        "dónde están",
+        "donde quedan",
+        "dónde quedan",
+        "como llego",
+        "cómo llego",
+        "maps",
+        "google maps"
+      ]
+    }
+  ],
+  "interpretaciones": [
+    {
+      "id": "menu",
+      "prioridad": 120,
+      "destino": "inicio",
+      "patrones": [
+        "menu",
+        "menú",
+        "inicio",
+        "volver",
+        "volver al menu",
+        "volver al menú",
+        "reiniciar",
+        "empezar de nuevo"
+      ]
+    },
+    {
+      "id": "saludo",
+      "prioridad": 115,
+      "destino": "inicio",
+      "patrones": [
+        "hola",
+        "holaa",
+        "holaaa",
+        "buenas",
+        "buen dia",
+        "buen día",
+        "buenas tardes",
+        "buenas noches",
+        "ola",
+        "holi",
+        "hello"
+      ]
+    },
+    {
+      "id": "tecnico",
+      "prioridad": 110,
+      "destino": "tecnico",
+      "patrones": [
+        "asesoria tecnica",
+        "asesoría técnica",
+        "asesoramiento tecnico",
+        "asesoramiento técnico",
+        "asesor tecnico",
+        "asesor técnico",
+        "consulta tecnica",
+        "consulta técnica",
+        "agronomo",
+        "agrónomo",
+        "desarrollo",
+        "problema con cultivo",
+        "problema en cultivo"
+      ]
+    },
+    {
+      "id": "productos",
+      "prioridad": 105,
+      "destino": "productos",
+      "patrones": [
+        "productos",
+        "producto",
+        "catalogo",
+        "catálogo",
+        "que venden",
+        "qué venden",
+        "que productos tienen",
+        "qué productos tienen",
+        "conocer productos",
+        "nuestros productos"
+      ]
+    },
+    {
+      "id": "zona_4_canadas",
+      "prioridad": 103,
+      "destino": "comercial_este_4_canadas",
+      "patrones": [
+        "4 canadas",
+        "4 cañadas",
+        "cuatro canadas",
+        "cuatro cañadas"
+      ]
+    },
+    {
+      "id": "zona_transcontinental_este",
+      "prioridad": 103,
+      "destino": "comercial_este_transcontinental_este",
+      "patrones": [
+        "transcontinental este",
+        "transcom este"
+      ]
+    },
+    {
+      "id": "zona_transcontinental_sur",
+      "prioridad": 103,
+      "destino": "comercial_este_transcontinental_sur",
+      "patrones": [
+        "transcontinental sur",
+        "transcom sur"
+      ]
+    },
+    {
+      "id": "zona_san_julian_okinawa",
+      "prioridad": 103,
+      "destino": "comercial_este_san_julian_okinawa",
+      "patrones": [
+        "san julian",
+        "san julián",
+        "okinawa",
+        "okina"
+      ]
+    },
+    {
+      "id": "zona_guarayos_beni",
+      "prioridad": 103,
+      "destino": "comercial_este_guarayos_beni",
+      "patrones": [
+        "guarayos",
+        "departamento beni",
+        "depto beni",
+        "beni"
+      ]
+    },
+    {
+      "id": "zona_montero_yapacani",
+      "prioridad": 103,
+      "destino": "comercial_norte_montero_yapacani",
+      "patrones": [
+        "montero",
+        "yapacani",
+        "yapacaní"
+      ]
+    },
+    {
+      "id": "zona_chiquitania",
+      "prioridad": 102,
+      "destino": "comercial_chiquitania",
+      "patrones": [
+        "chiquitania",
+        "zona chiquitania"
+      ]
+    },
+    {
+      "id": "zona_valles_chapare",
+      "prioridad": 102,
+      "destino": "comercial_valles_chapare",
+      "patrones": [
+        "valles chapare",
+        "valles / chapare",
+        "zona valles",
+        "zona chapare",
+        "valles",
+        "chapare"
+      ]
+    },
+    {
+      "id": "zona_norte",
+      "prioridad": 100,
+      "destino": "comercial_norte",
+      "patrones": [
+        "zona norte"
+      ]
+    },
+    {
+      "id": "zona_este",
+      "prioridad": 100,
+      "destino": "comercial_este",
+      "patrones": [
+        "zona este"
+      ]
+    },
+    {
+      "id": "comercial",
+      "prioridad": 90,
+      "destino": "comercial_zonas",
+      "patrones": [
+        "consulta comercial",
+        "asesor comercial",
+        "ventas",
+        "vendedor",
+        "vendedora",
+        "comercial",
+        "precio",
+        "precios",
+        "cotizar",
+        "cotizacion",
+        "cotización",
+        "comprar",
+        "compra",
+        "pedido",
+        "stock",
+        "disponibilidad"
+      ]
+    },
+    {
+      "id": "asesor_ambiguo",
+      "prioridad": 80,
+      "destino": "tipo_asesor",
+      "patrones": [
+        "asesor",
+        "asesora",
+        "quiero asesor",
+        "quiero hablar con alguien",
+        "persona",
+        "atencion humana",
+        "atención humana"
+      ]
+    }
+  ],
+  "sin_respuesta": [
+    "gracias",
+    "muchas gracias",
+    "mil gracias",
+    "ok gracias",
+    "listo gracias",
+    "ok",
+    "okay",
+    "listo",
+    "perfecto",
+    "chau",
+    "chao",
+    "adios",
+    "adiós",
+    "hasta luego"
+  ]
+}

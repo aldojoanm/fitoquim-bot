@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <title>Asistente FITOQUIM</title>
+    <link rel="stylesheet" href="./chat.css" />
+  </head>
+  <body>
+    <main class="chat">
+      <header class="chat__cabecera">
+        <div class="chat__marca">F</div>
+        <div>
+          <h1>FITOQUIM</h1>
+          <p>Asistente virtual</p>
+        </div>
+      </header>
+
+      <section
+        id="mensajes"
+        class="chat__mensajes"
+        aria-live="polite"
+        aria-label="Conversación"
+      ></section>
+
+      <form id="formulario" class="chat__entrada" autocomplete="off">
+        <input
+          id="texto"
+          type="text"
+          maxlength="1000"
+          placeholder="Escriba su consulta..."
+          aria-label="Escriba su consulta"
+        />
+        <button id="enviar" type="submit" aria-label="Enviar mensaje">Enviar</button>
+      </form>
+    </main>
+
+    <script src="./chat.js" defer></script>
+  </body>
+</html>
