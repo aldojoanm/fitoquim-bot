@@ -1,17 +1,11 @@
 import express from 'express';
 
 import { iniciarConversacion, procesarEntrada } from './bot.js';
-import { registrarMetrica } from './metricas.js';
 
 const router = express.Router();
 
 function sesionValida(valor = '') {
   return /^[a-zA-Z0-9_-]{10,120}$/.test(String(valor || ''));
-}
-
-function prepararIdentificador(req, sesionId) {
-  const ip = String(req.ip || req.socket?.remoteAddress || 'sin-ip');
-  return `web:${sesionId}:${ip}`;
 }
 
 function responder(res, respuesta) {
@@ -32,10 +26,9 @@ router.post('/api/chat/iniciar', async (req, res, next) => {
       });
     }
 
-    const identificador = prepararIdentificador(req, sesionId);
     const respuesta = iniciarConversacion({
       canal: 'web',
-      identificador,
+      identificador: sesionId,
     });
 
     return responder(res, respuesta);
@@ -56,23 +49,11 @@ router.post('/api/chat/mensaje', async (req, res, next) => {
       });
     }
 
-    const identificador = prepararIdentificador(req, sesionId);
     const respuesta = procesarEntrada({
       canal: 'web',
-      identificador,
+      identificador: sesionId,
       texto,
     });
-
-    if (respuesta?.metrica) {
-      registrarMetrica({
-        canal: 'Web',
-        identificador,
-        ...respuesta.metrica,
-      }).catch((error) => {
-        console.error('[FITOQUIM] Métrica web:', error?.message || error);
-      });
-    }
-
     return responder(res, respuesta);
   } catch (error) {
     return next(error);

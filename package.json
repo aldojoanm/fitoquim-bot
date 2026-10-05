@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node servidor.js",
     "dev": "node --watch servidor.js",
-    "revisar": "node --check servidor.js && node --check src/bot.js && node --check src/whatsapp.js && node --check src/web.js && node --check src/metricas.js && node --check public/chat/chat.js"
+    "revisar": "node --check servidor.js && node --check src/bot.js && node --check src/whatsapp.js && node --check src/web.js && node --check public/chat/chat.js && node --check public/widget.js"
   },
   "engines": {
     "node": ">=20"

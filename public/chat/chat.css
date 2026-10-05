@@ -79,6 +79,7 @@ input {
 }
 
 .chat__mensajes {
+  min-height: 0;
   overflow-y: auto;
   padding: 18px;
   background: var(--fondo-suave);
@@ -182,6 +183,14 @@ input {
   font-size: 15px;
 }
 
+.contacto__foto {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
 .contacto p {
   margin: 3px 0 0;
   color: var(--texto-secundario);
@@ -280,10 +289,25 @@ input {
 
   .chat {
     width: 100%;
-    height: 100vh;
-    min-height: 100vh;
+    height: 100dvh;
+    min-height: 0;
     border: 0;
     border-radius: 0;
     box-shadow: none;
   }
+}
+
+.embebido body {
+  display: block;
+  padding: 0;
+  min-height: 0;
+}
+
+.embebido .chat {
+  width: 100%;
+  height: 100dvh;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
 }

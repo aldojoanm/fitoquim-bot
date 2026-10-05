@@ -11,7 +11,8 @@
       "habilitado": false,
       "direccion": "",
       "google_maps": ""
-    }
+    },
+    "telefono_general": ""
   },
   "limites": {
     "whatsapp": {
@@ -24,17 +25,19 @@
     }
   },
   "contactos": {
-    "carlos_corp": {
-      "id": "carlos_corp",
-      "nombre": "Carlos Corp",
+    "lindsey_vieria": {
+      "id": "lindsey_vieria",
+      "nombre": "Lindsey Vieria",
       "cargo": "Ventas Corporativas",
       "empresa": "FITOQUIM SRL",
-      "telefono": "+59178464015",
+      "telefono": "+59177661352",
+      "foto": "/asesores/lindsey_viera.webp",
       "configurado": true
     },
     "luis_castro": {
       "id": "luis_castro",
       "nombre": "Luis Castro",
+      "foto": "/asesores/luis_castro.webp",
       "cargo": "Área de Desarrollo",
       "empresa": "FITOQUIM SRL",
       "telefono": "+59177661215",
@@ -43,6 +46,7 @@
     "guiscela_hurtado": {
       "id": "guiscela_hurtado",
       "nombre": "Guiscela Hurtado",
+      "foto": "/asesores/guiscela_hurtado.webp",
       "cargo": "Atención comercial",
       "empresa": "FITOQUIM SRL",
       "telefono": "+59175687684",
@@ -50,15 +54,16 @@
     },
     "marco": {
       "id": "marco",
-      "nombre": "Marco",
+      "nombre": "Marcos Gutierrez",
       "cargo": "Atención comercial - Distribuidor",
       "empresa": "FITOQUIM SRL",
-      "telefono": "",
-      "configurado": false
+      "telefono": "+59178464015",
+      "configurado": true
     },
     "maira_cadima": {
       "id": "maira_cadima",
-      "nombre": "Maira Cadima",
+      "nombre": "Maira Cadima Fitoquim SRL",
+      "foto": "/asesores/maira_cadima.webp",
       "cargo": "Atención comercial",
       "empresa": "FITOQUIM SRL",
       "telefono": "+59178515896",
@@ -82,15 +87,17 @@
     },
     "roberth": {
       "id": "roberth",
-      "nombre": "Roberth",
+      "nombre": "Roberth Ferrufino",
+      "foto": "/asesores/robert_ferrufino.webp",
       "cargo": "Atención comercial - Transcontinental Sur",
       "empresa": "FITOQUIM SRL",
-      "telefono": "",
-      "configurado": false
+      "telefono": "+59177080808",
+      "configurado": true
     },
     "sergio_gutierrez": {
       "id": "sergio_gutierrez",
       "nombre": "Sergio Gutierrez",
+      "foto": "/asesores/sergio_gutierrez.webp",
       "cargo": "Atención comercial",
       "empresa": "FITOQUIM SRL",
       "telefono": "+59169006073",
@@ -99,6 +106,7 @@
     "manuel_paredes": {
       "id": "manuel_paredes",
       "nombre": "Manuel Paredes",
+      "foto": "/asesores/manuel_paredes.webp",
       "cargo": "Atención comercial",
       "empresa": "FITOQUIM SRL",
       "telefono": "+59177661201",
@@ -107,6 +115,7 @@
     "jorge_rojo": {
       "id": "jorge_rojo",
       "nombre": "Jorge Rojo",
+      "foto": "/asesores/jorge_rojo.webp",
       "cargo": "Atención comercial",
       "empresa": "FITOQUIM SRL",
       "telefono": "+59177661217",
@@ -121,7 +130,7 @@
       "opciones": [
         {
           "id": "productos",
-          "etiqueta": "Productos",
+          "etiqueta": "Conocer productos",
           "destino": "productos",
           "alias": [
             "productos",
@@ -134,7 +143,7 @@
         },
         {
           "id": "tecnico",
-          "etiqueta": "Asesoría técnica",
+          "etiqueta": "Asesoramiento técnico",
           "destino": "tecnico",
           "alias": [
             "asesoria tecnica",
@@ -143,7 +152,8 @@
             "asesoramiento técnico",
             "tecnico",
             "técnico"
-          ]
+          ],
+          "etiqueta_whatsapp": "Asesoría técnica"
         },
         {
           "id": "comercial",
@@ -166,14 +176,15 @@
       "opciones": [
         {
           "id": "asesor_tecnico",
-          "etiqueta": "Asesoría técnica",
+          "etiqueta": "Asesoramiento técnico",
           "destino": "tecnico",
           "alias": [
             "tecnico",
             "técnico",
             "asesor tecnico",
             "asesor técnico"
-          ]
+          ],
+          "etiqueta_whatsapp": "Asesoría técnica"
         },
         {
           "id": "asesor_comercial",
@@ -189,21 +200,11 @@
     },
     "productos": {
       "tipo": "contacto",
-      "contacto_id": "carlos_corp",
-      "metrica": {
-        "area": "Productos",
-        "zona": "",
-        "subzona": ""
-      }
+      "contacto_id": "lindsey_vieria"
     },
     "tecnico": {
       "tipo": "contacto",
-      "contacto_id": "luis_castro",
-      "metrica": {
-        "area": "Asesoramiento técnico",
-        "zona": "",
-        "subzona": ""
-      }
+      "contacto_id": "luis_castro"
     },
     "comercial_zonas": {
       "tipo": "opciones",
@@ -233,7 +234,7 @@
         },
         {
           "id": "zona_chiquitania",
-          "etiqueta": "Zona Chiquitania",
+          "etiqueta": "Chiquitania",
           "descripcion": "Atención comercial Chiquitania",
           "destino": "comercial_chiquitania",
           "alias": [
@@ -364,93 +365,43 @@
     },
     "comercial_norte_directo": {
       "tipo": "contacto",
-      "contacto_id": "guiscela_hurtado",
-      "metrica": {
-        "area": "Comercial",
-        "zona": "Zona Norte",
-        "subzona": "Directo"
-      }
+      "contacto_id": "guiscela_hurtado"
     },
     "comercial_norte_distribuidor": {
       "tipo": "contacto",
-      "contacto_id": "marco",
-      "metrica": {
-        "area": "Comercial",
-        "zona": "Zona Norte",
-        "subzona": "Distribuidor"
-      }
+      "contacto_id": "marco"
     },
     "comercial_norte_montero_yapacani": {
       "tipo": "contacto",
-      "contacto_id": "maira_cadima",
-      "metrica": {
-        "area": "Comercial",
-        "zona": "Zona Norte",
-        "subzona": "Montero / Yapacaní"
-      }
+      "contacto_id": "maira_cadima"
     },
     "comercial_este_4_canadas": {
       "tipo": "contacto",
-      "contacto_id": "darwin_salvatierra",
-      "metrica": {
-        "area": "Comercial",
-        "zona": "Zona Este",
-        "subzona": "4 Cañadas"
-      }
+      "contacto_id": "darwin_salvatierra"
     },
     "comercial_este_transcontinental_este": {
       "tipo": "contacto",
-      "contacto_id": "manuel_mendoza",
-      "metrica": {
-        "area": "Comercial",
-        "zona": "Zona Este",
-        "subzona": "Transcontinental Este"
-      }
+      "contacto_id": "manuel_mendoza"
     },
     "comercial_este_transcontinental_sur": {
       "tipo": "contacto",
-      "contacto_id": "roberth",
-      "metrica": {
-        "area": "Comercial",
-        "zona": "Zona Este",
-        "subzona": "Transcontinental Sur"
-      }
+      "contacto_id": "roberth"
     },
     "comercial_este_san_julian_okinawa": {
       "tipo": "contacto",
-      "contacto_id": "sergio_gutierrez",
-      "metrica": {
-        "area": "Comercial",
-        "zona": "Zona Este",
-        "subzona": "San Julián / Okinawa"
-      }
+      "contacto_id": "sergio_gutierrez"
     },
     "comercial_este_guarayos_beni": {
       "tipo": "contacto",
-      "contacto_id": "manuel_paredes",
-      "metrica": {
-        "area": "Comercial",
-        "zona": "Zona Este",
-        "subzona": "Guarayos / Beni"
-      }
+      "contacto_id": "manuel_paredes"
     },
     "comercial_chiquitania": {
       "tipo": "contacto",
-      "contacto_id": "jorge_rojo",
-      "metrica": {
-        "area": "Comercial",
-        "zona": "Zona Chiquitania",
-        "subzona": ""
-      }
+      "contacto_id": "jorge_rojo"
     },
     "comercial_valles_chapare": {
       "tipo": "contacto",
-      "contacto_id": "maira_cadima",
-      "metrica": {
-        "area": "Comercial",
-        "zona": "Zona Valles / Chapare",
-        "subzona": ""
-      }
+      "contacto_id": "maira_cadima"
     }
   },
   "preguntas_frecuentes": [
@@ -488,7 +439,18 @@
         "como llego",
         "cómo llego",
         "maps",
-        "google maps"
+        "google maps",
+        "mapa"
+      ]
+    },
+    {
+      "id": "telefono",
+      "tipo": "telefono",
+      "habilitada": false,
+      "patrones": [
+        "telefono",
+        "contacto general",
+        "numero general"
       ]
     }
   ],
@@ -506,7 +468,8 @@
         "volver al menú",
         "reiniciar",
         "empezar de nuevo"
-      ]
+      ],
+      "solo_exacto": true
     },
     {
       "id": "saludo",
@@ -524,7 +487,8 @@
         "ola",
         "holi",
         "hello"
-      ]
+      ],
+      "solo_exacto": true
     },
     {
       "id": "tecnico",
@@ -543,7 +507,9 @@
         "agrónomo",
         "desarrollo",
         "problema con cultivo",
-        "problema en cultivo"
+        "problema en cultivo",
+        "tecnico",
+        "asesoramiento tecncio"
       ]
     },
     {
@@ -560,7 +526,9 @@
         "que productos tienen",
         "qué productos tienen",
         "conocer productos",
-        "nuestros productos"
+        "nuestros productos",
+        "catologo",
+        "produtos"
       ]
     },
     {
@@ -682,7 +650,9 @@
         "compra",
         "pedido",
         "stock",
-        "disponibilidad"
+        "disponibilidad",
+        "cotisacion",
+        "cotizasion"
       ]
     },
     {
@@ -714,6 +684,7 @@
     "chao",
     "adios",
     "adiós",
-    "hasta luego"
+    "hasta luego",
+    "perfecto gracias"
   ]
 }

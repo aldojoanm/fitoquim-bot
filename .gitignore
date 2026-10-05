@@ -1,5 +1,4 @@
 node_modules/
 .env
-metricas/*.jsonl
 .DS_Store
 npm-debug.log*

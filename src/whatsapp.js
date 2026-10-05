@@ -1,14 +1,14 @@
 import crypto from 'crypto';
 import express from 'express';
 
-import { procesarEntrada } from './bot.js';
-import { registrarMetrica } from './metricas.js';
+import { procesarEntrada, cancelarRespuesta } from './bot.js';
 
 const router = express.Router();
 
 const TOKEN_VERIFICACION = process.env.META_VERIFY_TOKEN || '';
 const TOKEN_ACCESO = process.env.META_ACCESS_TOKEN || '';
 const ID_NUMERO_TELEFONO = process.env.META_PHONE_NUMBER_ID || '';
+export const ID_CUENTA_WHATSAPP = process.env.META_WABA_ID || '';
 const VERSION_API = process.env.META_API_VERSION || 'v24.0';
 const SECRETO_APP = process.env.META_APP_SECRET || '';
 
@@ -32,7 +32,7 @@ function yaFueProcesado(idMensaje) {
 }
 
 function verificarFirma(req) {
-  if (!SECRETO_APP) return true;
+  if (!SECRETO_APP) return false;
 
   const firmaRecibida = String(req.get('x-hub-signature-256') || '').trim();
   if (!firmaRecibida.startsWith('sha256=')) return false;
@@ -79,7 +79,7 @@ async function llamarApiWhatsApp(cuerpo) {
   const texto = await respuesta.text();
 
   if (!respuesta.ok) {
-    throw new Error(`WhatsApp API ${respuesta.status}: ${texto}`);
+    throw new Error(`WhatsApp API: error HTTP ${respuesta.status}`);
   }
 
   try {
@@ -107,7 +107,7 @@ async function enviarBotones(numeroDestino, texto, opciones) {
     type: 'reply',
     reply: {
       id: String(opcion.payload || '').slice(0, 256),
-      title: String(opcion.etiqueta || '').slice(0, 20),
+      title: String(opcion.etiquetaWhatsApp || opcion.etiqueta || '').slice(0, 20),
     },
   }));
 
@@ -180,7 +180,7 @@ async function enviarContacto(numeroDestino, contacto) {
         },
         org: {
           company: String(contacto.empresa || 'FITOQUIM SRL').slice(0, 256),
-          department: String(contacto.cargo || '').slice(0, 256),
+          title: String(contacto.cargo || '').slice(0, 256),
         },
         phones: [
           {
@@ -211,7 +211,6 @@ async function enviarRespuesta(numeroDestino, respuesta) {
     const opciones = respuesta.opciones || [];
 
     if (
-      respuesta.presentacionWhatsApp === 'botones' &&
       opciones.length > 0 &&
       opciones.length <= 3
     ) {
@@ -255,7 +254,7 @@ function obtenerEntradaMensaje(mensaje) {
     return mensaje.button?.payload || mensaje.button?.text || '';
   }
 
-  return '__ENTRADA_NO_COMPATIBLE__';
+  return null;
 }
 
 async function procesarMensaje(mensaje) {
@@ -266,45 +265,30 @@ async function procesarMensaje(mensaje) {
 
   const entrada = obtenerEntradaMensaje(mensaje);
 
-  let respuesta;
-
-  if (entrada === '__ENTRADA_NO_COMPATIBLE__') {
-    respuesta = procesarEntrada({
-      canal: 'whatsapp',
-      identificador: numeroUsuario,
-      texto: 'menu',
-    });
-  } else {
-    respuesta = procesarEntrada({
-      canal: 'whatsapp',
-      identificador: numeroUsuario,
-      texto: entrada,
-    });
-  }
-
+  if (!entrada || !idMensaje) return;
+  const respuesta = procesarEntrada({
+    canal: 'whatsapp', identificador: numeroUsuario, texto: entrada,
+  });
   if (!respuesta) return;
-
-  await enviarRespuesta(numeroUsuario, respuesta);
-
-  if (respuesta.metrica) {
-    registrarMetrica({
-      canal: 'WhatsApp',
-      identificador: numeroUsuario,
-      ...respuesta.metrica,
-    }).catch((error) => {
-      console.error('[FITOQUIM] Métrica WhatsApp:', error?.message || error);
-    });
+  try {
+    await enviarRespuesta(numeroUsuario, respuesta);
+  } catch (error) {
+    cancelarRespuesta({ canal: 'whatsapp', identificador: numeroUsuario, respuesta });
+    throw error;
   }
 }
 
 async function procesarWebhook(cuerpo) {
+  if (cuerpo?.object !== 'whatsapp_business_account') return;
   const entradas = Array.isArray(cuerpo?.entry) ? cuerpo.entry : [];
 
   for (const entrada of entradas) {
     const cambios = Array.isArray(entrada?.changes) ? entrada.changes : [];
 
     for (const cambio of cambios) {
+      if (cambio?.field !== 'messages') continue;
       const valor = cambio?.value;
+      if (valor?.metadata?.phone_number_id !== ID_NUMERO_TELEFONO) continue;
       const mensajes = Array.isArray(valor?.messages) ? valor.messages : [];
 
       for (const mensaje of mensajes) {
@@ -334,6 +318,7 @@ router.get('/webhook/whatsapp', (req, res) => {
 });
 
 router.post('/webhook/whatsapp', (req, res) => {
+  if (!SECRETO_APP) return res.status(503).json({ error: 'webhook_no_configurado' });
   if (!verificarFirma(req)) {
     return res.status(401).json({ error: 'firma_invalida' });
   }

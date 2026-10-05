@@ -14,16 +14,27 @@ function crearSesionId() {
 }
 
 function obtenerSesionId() {
-  let id = localStorage.getItem(CLAVE_SESION);
-  if (!id) {
-    id = crearSesionId();
-    localStorage.setItem(CLAVE_SESION, id);
+  try {
+    let id = localStorage.getItem(CLAVE_SESION);
+    if (!id || !/^[a-zA-Z0-9_-]{10,120}$/.test(id)) {
+      id = crearSesionId();
+      localStorage.setItem(CLAVE_SESION, id);
+    }
+    return id;
+  } catch {
+    return crearSesionId();
   }
-  return id;
 }
 
 const sesionId = obtenerSesionId();
 let ocupado = false;
+const embebido = new URLSearchParams(location.search).get('embebido') === '1';
+if (embebido) {
+  document.documentElement.classList.add('embebido');
+  document.addEventListener('keydown', (evento) => {
+    if (evento.key === 'Escape') window.parent.postMessage('fitoquim:cerrar', '*');
+  });
+}
 
 function desplazarAbajo() {
   requestAnimationFrame(() => {
@@ -96,6 +107,17 @@ function agregarContacto(contacto) {
   const avatar = document.createElement('div');
   avatar.className = 'contacto__iniciales';
   avatar.textContent = iniciales(contacto.nombre);
+  if (contacto.foto) {
+    const foto = document.createElement('img');
+    foto.className = 'contacto__foto';
+    foto.src = contacto.foto;
+    foto.alt = contacto.nombre;
+    foto.loading = 'lazy';
+    foto.width = 48;
+    foto.height = 48;
+    foto.addEventListener('error', () => { avatar.textContent = iniciales(contacto.nombre); });
+    avatar.replaceChildren(foto);
+  }
 
   const info = document.createElement('div');
 
