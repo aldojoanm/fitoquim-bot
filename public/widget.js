@@ -192,9 +192,6 @@
   iframe.title =
     'Asistente virtual de FITOQUIM';
 
-  iframe.src =
-    `${origen}/chat/?embebido=1`;
-
   iframe.setAttribute(
     'allow',
     'clipboard-write',
@@ -240,6 +237,10 @@
   let abierto = false;
 
   function actualizar() {
+    if (abierto && !iframe.hasAttribute('src')) {
+      iframe.src = `${origen}/chat/?embebido=1`;
+    }
+
     panel.classList.toggle(
       'fitoquim-abierto',
       abierto,
@@ -290,6 +291,15 @@
       }
     },
   );
+
+  window.addEventListener('message', (evento) => {
+    if (evento.origin === origen && evento.source === iframe.contentWindow &&
+        evento.data === 'fitoquim:cerrar') {
+      abierto = false;
+      actualizar();
+      boton.focus();
+    }
+  });
 
   widget.appendChild(panel);
   widget.appendChild(boton);

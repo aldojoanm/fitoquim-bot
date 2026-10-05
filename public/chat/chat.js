@@ -718,4 +718,11 @@ botonMenu.addEventListener(
   },
 );
 
+window.addEventListener('keydown', (evento) => {
+  if (evento.key === 'Escape' && window.parent !== window) {
+    const origenAnfitrion = document.referrer ? new URL(document.referrer).origin : '';
+    if (origenAnfitrion) window.parent.postMessage('fitoquim:cerrar', origenAnfitrion);
+  }
+});
+
 iniciar();

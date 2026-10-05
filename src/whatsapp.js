@@ -1,4 +1,8 @@
 import crypto from 'node:crypto';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { File } from 'node:buffer';
 import express from 'express';
 
 import {
@@ -24,10 +28,73 @@ const VERSION_API =
 const SECRETO_APP =
   process.env.META_APP_SECRET || '';
 
-const URL_PUBLICA_BOT =
-  String(process.env.URL_PUBLICA_BOT || '')
-    .trim()
-    .replace(/\/+$/, '');
+const RUTA_PUBLICA = fileURLToPath(new URL('../public', import.meta.url));
+const cacheMedios = new Map();
+const DURACION_MEDIA = 20 * 24 * 60 * 60 * 1000;
+
+function diagnosticoSeguro(valor) {
+  let texto = typeof valor === 'string' ? valor : JSON.stringify(valor);
+  for (const secreto of [TOKEN_ACCESO, SECRETO_APP, TOKEN_VERIFICACION]) {
+    if (secreto) texto = texto.replaceAll(secreto, '[oculto]');
+  }
+  return texto;
+}
+
+function registrarErrorMeta(etapa, error) {
+  console.error(`[FITOQUIM] ${etapa}: HTTP ${error.estado || 'no disponible'}`,
+    diagnosticoSeguro(error.datos || { mensaje: error.message }));
+}
+
+export async function obtenerMediaId(rutaFoto) {
+  console.log('[FITOQUIM] Foto contacto:', rutaFoto);
+  const ruta = path.resolve(RUTA_PUBLICA, String(rutaFoto || '').replace(/^\/+/, ''));
+  if (!ruta.startsWith(`${RUTA_PUBLICA}${path.sep}`) ||
+      !['.jpg', '.jpeg', '.png'].includes(path.extname(ruta).toLowerCase())) {
+    throw new Error('Ruta de foto WhatsApp inválida.');
+  }
+  const estado = await fs.stat(ruta).catch((error) => {
+    console.error('[FITOQUIM] Archivo foto existe: false');
+    throw error;
+  });
+  console.log('[FITOQUIM] Archivo foto existe:', estado.isFile());
+  if (!estado.isFile()) throw new Error('La foto no es un archivo.');
+  const previo = cacheMedios.get(ruta);
+  if (previo?.mtime === estado.mtimeMs && previo.expira > Date.now()) {
+    console.log('[FITOQUIM] Media ID reutilizado:', await previo.promesa);
+    return previo.promesa;
+  }
+  const promesa = (async () => {
+    const contenido = await fs.readFile(ruta);
+    const mime = contenido.subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff]))
+      ? 'image/jpeg'
+      : contenido.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
+        ? 'image/png' : '';
+    if (!mime) throw new Error('El contenido de la foto no es JPEG ni PNG.');
+    console.log('[FITOQUIM] MIME foto:', mime);
+    const formulario = new FormData();
+    formulario.set('messaging_product', 'whatsapp');
+    formulario.set('file', new File([contenido], path.basename(ruta), { type: mime }));
+    const respuesta = await fetch(endpointMensajes().replace(/\/messages$/, '/media'), {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${TOKEN_ACCESO}` },
+      body: formulario,
+      signal: AbortSignal.timeout(30000),
+    });
+    const datos = await interpretarMeta(respuesta);
+    console.log(`[FITOQUIM] Upload foto: HTTP ${respuesta.status}`, diagnosticoSeguro(datos));
+    if (!datos.id) throw new Error('Meta no devolvió media ID.');
+    console.log('[FITOQUIM] Media ID generado:', datos.id);
+    return String(datos.id);
+  })();
+  cacheMedios.set(ruta, { mtime: estado.mtimeMs, expira: Date.now() + DURACION_MEDIA, promesa });
+  try {
+    return await promesa;
+  } catch (error) {
+    if (cacheMedios.get(ruta)?.promesa === promesa) cacheMedios.delete(ruta);
+    registrarErrorMeta('Error al subir foto', error);
+    throw error;
+  }
+}
 
 const mensajesProcesados = [];
 const mensajesProcesadosSet = new Set();
@@ -128,7 +195,7 @@ async function interpretarMeta(respuesta) {
 
   if (!respuesta.ok) {
     const error = new Error(
-      `WhatsApp API ${respuesta.status}: ${texto}`,
+      `WhatsApp API ${respuesta.status}: ${diagnosticoSeguro(texto)}`,
     );
 
     error.estado = respuesta.status;
@@ -157,7 +224,14 @@ async function enviarMeta(cuerpo) {
     },
   );
 
-  return interpretarMeta(respuesta);
+  const datos = await interpretarMeta(respuesta);
+  if (cuerpo.interactive?.type === 'cta_url') {
+    console.log(
+      `[FITOQUIM] Respuesta CTA (header image: ${Boolean(cuerpo.interactive.header?.image?.id)}): HTTP ${respuesta.status}`,
+      diagnosticoSeguro(datos),
+    );
+  }
+  return datos;
 }
 
 async function enviarTexto(
@@ -317,22 +391,6 @@ function urlWhatsApp(contacto) {
   return `https://wa.me/${telefono}?text=${mensaje}`;
 }
 
-function urlFoto(contacto) {
-  if (
-    !URL_PUBLICA_BOT ||
-    !contacto?.fotoWhatsApp
-  ) {
-    return '';
-  }
-
-  const ruta =
-    contacto.fotoWhatsApp.startsWith('/')
-      ? contacto.fotoWhatsApp
-      : `/${contacto.fotoWhatsApp}`;
-
-  return `${URL_PUBLICA_BOT}${ruta}`;
-}
-
 function textoContacto(respuesta) {
   const partes = [];
 
@@ -358,13 +416,10 @@ function textoContacto(respuesta) {
 function cuerpoContacto(
   numero,
   respuesta,
-  incluirImagen,
+  mediaId = '',
 ) {
   const contacto =
     respuesta.contacto;
-
-  const foto =
-    urlFoto(contacto);
 
   return {
     messaging_product: 'whatsapp',
@@ -373,12 +428,12 @@ function cuerpoContacto(
     type: 'interactive',
     interactive: {
       type: 'cta_url',
-      ...(incluirImagen && foto
+      ...(mediaId
         ? {
             header: {
               type: 'image',
               image: {
-                link: foto,
+                id: mediaId,
               },
             },
           }
@@ -399,32 +454,26 @@ function cuerpoContacto(
   };
 }
 
-async function enviarContacto(
+export async function enviarContacto(
   numero,
   respuesta,
 ) {
-  const foto =
-    urlFoto(respuesta.contacto);
+  const foto = respuesta.contacto?.fotoWhatsApp;
 
   if (foto) {
-    console.log(
-      '[FITOQUIM] Foto WhatsApp:',
-      foto,
-    );
-
     try {
-      return await enviarMeta(
+      const mediaId = await obtenerMediaId(foto);
+      console.log('[FITOQUIM] Enviando CTA con header image.id:', mediaId);
+      const resultado = await enviarMeta(
         cuerpoContacto(
           numero,
           respuesta,
-          true,
+          mediaId,
         ),
       );
+      return resultado;
     } catch (error) {
-      console.error(
-        '[FITOQUIM] Meta rechazó la tarjeta con foto:',
-        error?.message || error,
-      );
+      registrarErrorMeta('Falló tarjeta con foto; se enviará sin imagen', error);
     }
   } else {
     console.warn(
@@ -436,7 +485,7 @@ async function enviarContacto(
     cuerpoContacto(
       numero,
       respuesta,
-      false,
+      '',
     ),
   );
 }

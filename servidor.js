@@ -169,6 +169,14 @@ app.get('/', (_req, res) => {
     `);
 });
 
+app.get(['/chat', '/chat/'], (req, res, next) => {
+  if (req.query.embebido !== '1') {
+    return res.redirect('/');
+  }
+
+  return next();
+});
+
 app.use(
   express.static(RUTA_PUBLICA),
 );

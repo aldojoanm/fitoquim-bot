@@ -7,7 +7,7 @@ const RUTA_CONFIGURACION = fileURLToPath(
 );
 
 const RUTA_PUBLICA = fileURLToPath(
-  new URL('../public/', import.meta.url),
+  new URL('../public', import.meta.url),
 );
 
 const DIA_MS = 24 * 60 * 60 * 1000;
@@ -162,32 +162,10 @@ function resolverFoto(contacto) {
     ['.webp', '.jpg', '.jpeg', '.png'],
   );
 
-  let fotoWhatsApp = resolverRutaPublica(
+  const fotoWhatsApp = resolverRutaPublica(
     contacto?.foto_whatsapp,
     ['.jpg', '.jpeg', '.png'],
   );
-
-  if (!fotoWhatsApp && fotoWeb) {
-    const extensionWeb = path.extname(fotoWeb).toLowerCase();
-
-    if (['.jpg', '.jpeg', '.png'].includes(extensionWeb)) {
-      fotoWhatsApp = fotoWeb;
-    } else if (extensionWeb === '.webp') {
-      const base = fotoWeb.slice(0, -5);
-
-      for (const extension of ['.jpg', '.jpeg', '.png']) {
-        const candidata = resolverRutaPublica(
-          `${base}${extension}`,
-          ['.jpg', '.jpeg', '.png'],
-        );
-
-        if (candidata) {
-          fotoWhatsApp = candidata;
-          break;
-        }
-      }
-    }
-  }
 
   return {
     foto: fotoWeb,
@@ -400,8 +378,7 @@ function tieneInterpretacion(texto, id) {
 
 function prepararRespuesta(texto, sesion, esInicio) {
   if (esInicio) {
-    sesion.iniciada = true;
-    return construirMenu(sesion, 'bienvenida');
+    return construirMenu(sesion, sesion.iniciada ? 'normal' : 'bienvenida');
   }
 
   const entrada = String(texto || '').trim();
