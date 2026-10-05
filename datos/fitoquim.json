@@ -27,7 +27,7 @@
   "contactos": {
     "lindsey_vieria": {
       "id": "lindsey_vieria",
-      "nombre": "Lindsey Vieria",
+      "nombre": "Lindsey Vieira",
       "cargo": "Ventas Corporativas",
       "empresa": "FITOQUIM SRL",
       "telefono": "+59177661352",
@@ -38,7 +38,7 @@
       "id": "luis_castro",
       "nombre": "Luis Castro",
       "foto": "/asesores/luis_castro.webp",
-      "cargo": "Área de Desarrollo",
+      "cargo": "Asesoramiento técnico",
       "empresa": "FITOQUIM SRL",
       "telefono": "+59177661215",
       "configurado": true
@@ -365,43 +365,53 @@
     },
     "comercial_norte_directo": {
       "tipo": "contacto",
-      "contacto_id": "guiscela_hurtado"
+      "contacto_id": "guiscela_hurtado",
+      "zona": "Zona Norte · Directo"
     },
     "comercial_norte_distribuidor": {
       "tipo": "contacto",
-      "contacto_id": "marco"
+      "contacto_id": "marco",
+      "zona": "Zona Norte · Distribuidor"
     },
     "comercial_norte_montero_yapacani": {
       "tipo": "contacto",
-      "contacto_id": "maira_cadima"
+      "contacto_id": "maira_cadima",
+      "zona": "Montero / Yapacaní"
     },
     "comercial_este_4_canadas": {
       "tipo": "contacto",
-      "contacto_id": "darwin_salvatierra"
+      "contacto_id": "darwin_salvatierra",
+      "zona": "4 Cañadas"
     },
     "comercial_este_transcontinental_este": {
       "tipo": "contacto",
-      "contacto_id": "manuel_mendoza"
+      "contacto_id": "manuel_mendoza",
+      "zona": "Transcontinental Este"
     },
     "comercial_este_transcontinental_sur": {
       "tipo": "contacto",
-      "contacto_id": "roberth"
+      "contacto_id": "roberth",
+      "zona": "Transcontinental Sur"
     },
     "comercial_este_san_julian_okinawa": {
       "tipo": "contacto",
-      "contacto_id": "sergio_gutierrez"
+      "contacto_id": "sergio_gutierrez",
+      "zona": "San Julián / Okinawa"
     },
     "comercial_este_guarayos_beni": {
       "tipo": "contacto",
-      "contacto_id": "manuel_paredes"
+      "contacto_id": "manuel_paredes",
+      "zona": "Guarayos / Beni"
     },
     "comercial_chiquitania": {
       "tipo": "contacto",
-      "contacto_id": "jorge_rojo"
+      "contacto_id": "jorge_rojo",
+      "zona": "Chiquitania"
     },
     "comercial_valles_chapare": {
       "tipo": "contacto",
-      "contacto_id": "maira_cadima"
+      "contacto_id": "maira_cadima",
+      "zona": "Valles / Chapare"
     }
   },
   "preguntas_frecuentes": [
@@ -467,7 +477,8 @@
         "volver al menu",
         "volver al menú",
         "reiniciar",
-        "empezar de nuevo"
+        "empezar de nuevo",
+        "principal"
       ],
       "solo_exacto": true
     },

@@ -2,6 +2,8 @@ const mensajes = document.getElementById('mensajes');
 const formulario = document.getElementById('formulario');
 const campoTexto = document.getElementById('texto');
 const botonEnviar = document.getElementById('enviar');
+const botonMenu = document.getElementById('volver-menu');
+const reducirMovimiento = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const CLAVE_SESION = 'fitoquim_chat_sesion';
 
@@ -59,6 +61,14 @@ function agregarEstado(texto) {
   const estado = document.createElement('div');
   estado.className = 'estado';
   estado.textContent = texto;
+  if (texto === 'Escribiendo...') {
+    estado.classList.add('estado--escribiendo');
+    const puntos = document.createElement('span');
+    puntos.className = 'estado__puntos';
+    puntos.setAttribute('aria-hidden', 'true');
+    for (let i = 0; i < 3; i += 1) puntos.appendChild(document.createElement('i'));
+    estado.appendChild(puntos);
+  }
   mensajes.appendChild(estado);
   desplazarAbajo();
   return estado;
@@ -74,17 +84,18 @@ function iniciales(nombre = '') {
 }
 
 function descargarVcard(contacto) {
+  const escapar = (valor = '') => String(valor).replace(/\\/g, '\\\\').replace(/\r?\n/g, '\\n').replace(/[,;]/g, '\\$&');
   const contenido = [
     'BEGIN:VCARD',
     'VERSION:3.0',
-    `FN:${contacto.nombre}`,
-    `ORG:${contacto.empresa || 'FITOQUIM SRL'}`,
-    contacto.cargo ? `TITLE:${contacto.cargo}` : '',
+    `FN:${escapar(contacto.nombre)}`,
+    `ORG:${escapar(contacto.empresa || 'FITOQUIM SRL')}`,
+    contacto.cargo ? `TITLE:${escapar(contacto.cargo)}` : '',
     `TEL;TYPE=CELL:${contacto.telefono}`,
     'END:VCARD',
   ]
     .filter(Boolean)
-    .join('\r\n');
+    .join('\r\n') + '\r\n';
 
   const archivo = new Blob([contenido], { type: 'text/vcard;charset=utf-8' });
   const url = URL.createObjectURL(archivo);
@@ -94,7 +105,7 @@ function descargarVcard(contacto) {
   document.body.appendChild(enlace);
   enlace.click();
   enlace.remove();
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function agregarContacto(contacto) {
@@ -139,7 +150,7 @@ function agregarContacto(contacto) {
 
   const whatsapp = document.createElement('a');
   whatsapp.className = 'contacto__whatsapp';
-  whatsapp.href = `https://wa.me/${contacto.telefonoDigitos}`;
+  whatsapp.href = `https://wa.me/${contacto.telefonoDigitos}?text=${encodeURIComponent(contacto.mensajeWhatsApp || 'Hola, vengo del asistente de FITOQUIM.')}`;
   whatsapp.target = '_blank';
   whatsapp.rel = 'noopener noreferrer';
   whatsapp.textContent = 'WhatsApp';
@@ -205,6 +216,7 @@ function renderizarRespuesta(respuesta) {
   }
 
   if (respuesta.tipo === 'contacto') {
+    if (respuesta.texto) agregarMensaje(respuesta.texto, 'bot');
     agregarContacto(respuesta.contacto);
     return;
   }
@@ -240,17 +252,19 @@ function establecerOcupado(valor) {
   ocupado = valor;
   campoTexto.disabled = valor;
   botonEnviar.disabled = valor;
+  botonMenu.disabled = valor;
+  mensajes.setAttribute('aria-busy', String(valor));
 }
 
-async function enviarAlBot(texto) {
+async function enviarAlBot(texto, volverMenu = false) {
   establecerOcupado(true);
-  const estado = agregarEstado('Procesando...');
+  const estado = agregarEstado('Escribiendo...');
 
   try {
-    const datos = await peticion('/api/chat/mensaje', {
+    const [datos] = await Promise.all([peticion('/api/chat/mensaje', {
       sesionId,
       texto,
-    });
+    }), new Promise((resolve) => setTimeout(resolve, reducirMovimiento || volverMenu ? 0 : 320))]);
 
     estado.remove();
     renderizarRespuesta(datos.respuesta);
@@ -276,12 +290,20 @@ formulario.addEventListener('submit', async (evento) => {
   await enviarAlBot(texto);
 });
 
+botonMenu.addEventListener('click', async () => {
+  if (ocupado) return;
+  bloquearOpcionesAnteriores();
+  campoTexto.value = '';
+  await enviarAlBot('IR:inicio', true);
+});
+
 async function iniciar() {
   establecerOcupado(true);
-  const estado = agregarEstado('Iniciando...');
+  const estado = agregarEstado('Escribiendo...');
 
   try {
-    const datos = await peticion('/api/chat/iniciar', { sesionId });
+    const [datos] = await Promise.all([peticion('/api/chat/iniciar', { sesionId }),
+      new Promise((resolve) => setTimeout(resolve, reducirMovimiento ? 0 : 250))]);
     estado.remove();
     renderizarRespuesta(datos.respuesta);
   } catch (error) {

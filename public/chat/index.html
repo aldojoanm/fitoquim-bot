@@ -15,6 +15,7 @@
           <h1>FITOQUIM</h1>
           <p>Asistente virtual</p>
         </div>
+        <span class="chat__estado"><i aria-hidden="true"></i> En línea</span>
       </header>
 
       <section
@@ -24,6 +25,8 @@
         aria-label="Conversación"
       ></section>
 
+      <footer class="chat__pie">
+      <button id="volver-menu" class="chat__volver" type="button">↩ Volver al menú</button>
       <form id="formulario" class="chat__entrada" autocomplete="off">
         <input
           id="texto"
@@ -34,6 +37,7 @@
         />
         <button id="enviar" type="submit" aria-label="Enviar mensaje">Enviar</button>
       </form>
+      </footer>
     </main>
 
     <script src="./chat.js" defer></script>

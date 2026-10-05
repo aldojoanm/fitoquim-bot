@@ -2,6 +2,7 @@
 import { fileURLToPath } from 'node:url';
 
 const RUTA_CONFIGURACION = fileURLToPath(new URL('../datos/fitoquim.json', import.meta.url));
+const RUTA_PUBLICA = new URL('../public/', import.meta.url);
 const DIA_MS = 24 * 60 * 60 * 1000;
 const CINCO_MINUTOS_MS = 5 * 60 * 1000;
 let configuracion = cargarConfiguracion();
@@ -78,12 +79,32 @@ function construirNodo(id, sesion, textoAlternativo) {
   const contacto = configuracion.contactos[nodo.contacto_id];
   const telefonoDigitos = String(contacto?.telefono || '').replace(/\D/g, '');
   if (!contacto?.configurado || !telefonoDigitos) {
-    return { tipo: 'texto', texto: 'El contacto de ' + (contacto?.nombre || 'esta opción') + ' todavía no está configurado. Escribí “menú” para volver al inicio.' };
+    return { tipo: 'texto', texto: 'El contacto de ' + (contacto?.nombre || 'esta opción') + ' aún no está disponible. Escribí “menú” para volver al inicio.' };
   }
+  const area = nodo.area || (id === 'productos' ? 'productos' : id === 'tecnico' ? 'tecnico' : 'comercial');
+  const zona = nodo.zona || '';
+  const cargo = area === 'tecnico' ? 'Asesoramiento técnico' : contacto.cargo || 'Asesor comercial';
+  const contexto = area === 'productos' ? {
+    texto: `Te compartimos el contacto de ${contacto.nombre}, del área de Ventas Corporativas.`,
+    mensaje: 'Quisiera recibir información sobre sus productos.',
+  } : area === 'tecnico' ? {
+    texto: `Te compartimos el contacto de ${contacto.nombre} para asesoramiento técnico.`,
+    mensaje: 'Necesito asesoramiento técnico.',
+  } : {
+    texto: `Tu contacto comercial${zona ? ` para ${zona}` : ''} es ${contacto.nombre}.`,
+    mensaje: `Necesito atención comercial${zona ? ` para ${zona}` : ''}.`,
+  };
+  const fotoWhatsApp = (contacto.foto || '').replace(/\.webp$/i, '.jpg');
+  const tieneFotoWhatsApp = /^\/asesores\/[^/]+\.(jpg|jpeg|png)$/i.test(fotoWhatsApp)
+    && fs.existsSync(new URL(fotoWhatsApp.slice(1), RUTA_PUBLICA));
   return {
-    tipo: 'contacto', contacto: {
-      id: contacto.id, nombre: contacto.nombre, cargo: contacto.cargo || '',
+    tipo: 'contacto', texto: contexto.texto, contacto: {
+      id: contacto.id, nombre: contacto.nombre, cargo,
       foto: contacto.foto || '',
+      fotoWhatsApp: tieneFotoWhatsApp ? fotoWhatsApp : '',
+      caption: `${contacto.nombre} · ${cargo}`,
+      mensajeWhatsApp: `Hola, vengo del asistente de FITOQUIM. ${contexto.mensaje}`,
+      area, zona,
       empresa: contacto.empresa || configuracion.empresa.nombre_legal,
       telefono: contacto.telefono, telefonoDigitos,
     },
@@ -107,6 +128,8 @@ function prepararRespuesta(texto, sesion, esInicio) {
   if (esInicio) return construirNodo('inicio', sesion);
   const entrada = String(texto || '').trim();
   if (entrada.startsWith('IR:')) return construirNodo(entrada.slice(3), sesion);
+  const regreso = coincidencias(entrada, configuracion.interpretaciones || []).find((regla) => regla.id === 'menu');
+  if (regreso) return construirNodo('inicio', sesion);
   const faq = coincidencias(entrada, configuracion.preguntas_frecuentes || [])[0];
   if (faq) return responderFaq(faq);
   const globales = coincidencias(entrada, configuracion.interpretaciones || []);
@@ -152,22 +175,31 @@ function responder({ canal = 'web', identificador, texto = '', esInicio = false 
   limpiarUso(registro, ahora);
   const limites = configuracion.limites[canal];
   const recientes = registro.respuestas.filter((item) => ahora - item.momento < CINCO_MINUTOS_MS);
+  const sesion = obtenerSesion(clave);
+  const nodoAnterior = sesion.nodoActual;
+  const propuesta = prepararRespuesta(texto, sesion, esInicio);
+  const cantidad = canal === 'whatsapp' && propuesta.tipo === 'contacto' ? 2 + (propuesta.contacto.fotoWhatsApp ? 1 : 0) : 1;
   let bloqueoHasta = 0;
-  if (registro.respuestas.length >= limites.respuestas_24_horas) {
-    bloqueoHasta = registro.respuestas[registro.respuestas.length - limites.respuestas_24_horas].momento + DIA_MS;
+  const excesoDiario = registro.respuestas.length + cantidad - limites.respuestas_24_horas;
+  const excesoRapido = recientes.length + cantidad - limites.respuestas_5_minutos;
+  if (excesoDiario > 0) {
+    const indice = Math.min(registro.respuestas.length - 1, excesoDiario - 1);
+    bloqueoHasta = (registro.respuestas[indice]?.momento ?? ahora) + DIA_MS;
   }
-  if (recientes.length >= limites.respuestas_5_minutos) {
-    bloqueoHasta = Math.max(bloqueoHasta, recientes[recientes.length - limites.respuestas_5_minutos].momento + CINCO_MINUTOS_MS);
+  if (excesoRapido > 0) {
+    const indice = Math.min(recientes.length - 1, excesoRapido - 1);
+    bloqueoHasta = Math.max(bloqueoHasta, (recientes[indice]?.momento ?? ahora) + CINCO_MINUTOS_MS);
   }
+  if (bloqueoHasta) sesion.nodoActual = nodoAnterior;
   const respuesta = bloqueoHasta ? {
     tipo: 'texto', avisoLimite: true,
     texto: 'Alcanzaste temporalmente el límite de consultas automáticas. Podés volver a intentarlo más tarde.',
-  } : prepararRespuesta(texto, obtenerSesion(clave), esInicio);
+  } : propuesta;
   // Reservar una respuesta evita superar el límite con solicitudes simultáneas.
-  const reserva = { momento: ahora };
-  registro.respuestas.push(reserva);
+  const reservadas = Array.from({ length: bloqueoHasta ? 1 : cantidad }, () => ({ momento: ahora }));
+  registro.respuestas.push(...reservadas);
   registro.bloqueoHasta = bloqueoHasta;
-  reservas.set(respuesta, { clave, reserva });
+  reservas.set(respuesta, { clave, reservadas, confirmadas: 0 });
   return respuesta;
 }
 
@@ -177,10 +209,16 @@ export function cancelarRespuesta({ canal, identificador, respuesta }) {
   if (!reserva || reserva.clave !== canal + ':' + identificador) return;
   const registro = usoPorUsuario.get(reserva.clave);
   if (registro) {
-    registro.respuestas = registro.respuestas.filter((item) => item !== reserva.reserva);
-    if (respuesta.avisoLimite) registro.bloqueoHasta = 0;
+    const pendientes = reserva.reservadas.slice(reserva.confirmadas);
+    registro.respuestas = registro.respuestas.filter((item) => !pendientes.includes(item));
+    if (respuesta.avisoLimite && !reserva.confirmadas) registro.bloqueoHasta = 0;
   }
   reservas.delete(respuesta);
+}
+
+export function confirmarEnvio(respuesta) {
+  const reserva = reservas.get(respuesta);
+  if (reserva) reserva.confirmadas += 1;
 }
 
 export function iniciarConversacion(parametros) {

@@ -1,7 +1,9 @@
 import crypto from 'crypto';
 import express from 'express';
+import fs from 'node:fs/promises';
+import { File } from 'node:buffer';
 
-import { procesarEntrada, cancelarRespuesta } from './bot.js';
+import { procesarEntrada, cancelarRespuesta, confirmarEnvio } from './bot.js';
 
 const router = express.Router();
 
@@ -11,6 +13,8 @@ const ID_NUMERO_TELEFONO = process.env.META_PHONE_NUMBER_ID || '';
 export const ID_CUENTA_WHATSAPP = process.env.META_WABA_ID || '';
 const VERSION_API = process.env.META_API_VERSION || 'v24.0';
 const SECRETO_APP = process.env.META_APP_SECRET || '';
+const imagenesSubidas = new Map();
+const enviosPorNumero = new Map();
 
 const mensajesProcesados = [];
 const mensajesProcesadosSet = new Set();
@@ -194,16 +198,54 @@ async function enviarContacto(numeroDestino, contacto) {
   });
 }
 
+async function enviarImagen(numeroDestino, contacto) {
+  const ruta = new URL('../public' + contacto.fotoWhatsApp, import.meta.url);
+  const datosArchivo = await fs.stat(ruta);
+  let imagen = imagenesSubidas.get(contacto.fotoWhatsApp);
+  if (!imagen || imagen.modificacion !== datosArchivo.mtimeMs || imagen.expiraEn <= Date.now()) {
+    const formulario = new FormData();
+    formulario.set('messaging_product', 'whatsapp');
+    const tipo = contacto.fotoWhatsApp.endsWith('.png') ? 'image/png' : 'image/jpeg';
+    formulario.set('file', new File([await fs.readFile(ruta)], 'asesor' + (tipo === 'image/png' ? '.png' : '.jpg'), { type: tipo }));
+    const subida = await fetch(`https://graph.facebook.com/${VERSION_API}/${ID_NUMERO_TELEFONO}/media`, {
+      method: 'POST', headers: { Authorization: `Bearer ${TOKEN_ACCESO}` },
+      body: formulario, signal: AbortSignal.timeout(12_000),
+    });
+    if (!subida.ok) throw new Error(`WhatsApp media: error HTTP ${subida.status}`);
+    const datos = await subida.json();
+    if (!datos.id) throw new Error('WhatsApp no devolvió un ID de imagen.');
+    imagen = { id: datos.id, modificacion: datosArchivo.mtimeMs, expiraEn: Date.now() + 20 * 24 * 60 * 60 * 1000 };
+    imagenesSubidas.set(contacto.fotoWhatsApp, imagen);
+  }
+  return llamarApiWhatsApp({
+    messaging_product: 'whatsapp', recipient_type: 'individual', to: normalizarTelefono(numeroDestino),
+    type: 'image', image: { id: imagen.id, caption: contacto.caption },
+  });
+}
+
 async function enviarRespuesta(numeroDestino, respuesta) {
   if (!respuesta) return;
 
   if (respuesta.tipo === 'texto') {
     await enviarTexto(numeroDestino, respuesta.texto);
+    confirmarEnvio(respuesta);
     return;
   }
 
   if (respuesta.tipo === 'contacto') {
+    await enviarTexto(numeroDestino, respuesta.texto + '\n\nEscribí “menú” para volver al inicio.');
+    confirmarEnvio(respuesta);
+    if (respuesta.contacto.fotoWhatsApp) {
+      try {
+        await enviarImagen(numeroDestino, respuesta.contacto);
+        confirmarEnvio(respuesta);
+      } catch {
+        imagenesSubidas.delete(respuesta.contacto.fotoWhatsApp);
+        console.warn('[FITOQUIM] No se pudo enviar la foto del asesor. Se continúa con su contacto.');
+      }
+    }
     await enviarContacto(numeroDestino, respuesta.contacto);
+    confirmarEnvio(respuesta);
     return;
   }
 
@@ -215,6 +257,7 @@ async function enviarRespuesta(numeroDestino, respuesta) {
       opciones.length <= 3
     ) {
       await enviarBotones(numeroDestino, respuesta.texto, opciones);
+      confirmarEnvio(respuesta);
       return;
     }
 
@@ -224,6 +267,7 @@ async function enviarRespuesta(numeroDestino, respuesta) {
       respuesta.textoBotonLista,
       opciones,
     );
+    confirmarEnvio(respuesta);
     return;
   }
 
@@ -257,7 +301,7 @@ function obtenerEntradaMensaje(mensaje) {
   return null;
 }
 
-async function procesarMensaje(mensaje) {
+async function responderMensaje(mensaje) {
   const numeroUsuario = normalizarTelefono(mensaje?.from);
   const idMensaje = mensaje?.id;
 
@@ -272,10 +316,21 @@ async function procesarMensaje(mensaje) {
   if (!respuesta) return;
   try {
     await enviarRespuesta(numeroUsuario, respuesta);
-  } catch (error) {
+  } finally {
     cancelarRespuesta({ canal: 'whatsapp', identificador: numeroUsuario, respuesta });
-    throw error;
   }
+}
+
+function procesarMensaje(mensaje) {
+  const numero = normalizarTelefono(mensaje?.from);
+  if (!numero) return Promise.resolve();
+  // Mantener juntos texto, foto y tarjeta aunque lleguen mensajes simultáneos.
+  const anterior = enviosPorNumero.get(numero) || Promise.resolve();
+  const envio = anterior.catch(() => {}).then(() => responderMensaje(mensaje));
+  enviosPorNumero.set(numero, envio);
+  return envio.finally(() => {
+    if (enviosPorNumero.get(numero) === envio) enviosPorNumero.delete(numero);
+  });
 }
 
 async function procesarWebhook(cuerpo) {

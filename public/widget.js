@@ -10,18 +10,21 @@
     :host { position:fixed; right:16px; bottom:16px; z-index:2147483647; font-family:Arial,sans-serif; }
     * { box-sizing:border-box; }
     button { width:56px; height:56px; display:grid; place-items:center; margin-left:auto;
-      border:0; border-radius:50%; background:#17683d; color:white; cursor:pointer;
-      box-shadow:0 4px 20px #0003; font:28px Arial,sans-serif; }
-    button:focus-visible { outline:3px solid #72be91; outline-offset:3px; }
-    section { width:min(390px,calc(100vw - 32px)); height:min(650px,calc(100dvh - 104px));
-      margin-bottom:12px; background:white; border-radius:18px; overflow:hidden;
-      box-shadow:0 8px 40px #0003; }
-    section[hidden] { display:none; }
+      border:1px solid #ffffff35; border-radius:20px; background:linear-gradient(135deg,#0b5da6,#0597c0); color:white; cursor:pointer;
+      box-shadow:0 6px 24px #0b5da630; font:28px Arial,sans-serif; transition:transform 150ms,box-shadow 150ms; }
+    button:hover { transform:translateY(-2px); box-shadow:0 8px 28px #0b5da640; }
+    button:focus-visible { outline:3px solid #4fb3cf; outline-offset:3px; }
+    section { position:absolute; right:0; bottom:68px; width:min(390px,calc(100vw - 32px)); height:min(650px,calc(100dvh - 104px));
+      background:white; border:1px solid #d8e7f2; border-radius:20px; overflow:hidden;
+      box-shadow:0 16px 48px #123d6024; opacity:1; visibility:visible; transform:translateY(0) scale(1);
+      transform-origin:bottom right; transition:opacity 180ms,transform 180ms,visibility 180ms; }
+    section[hidden] { display:block; opacity:0; visibility:hidden; pointer-events:none; transform:translateY(10px) scale(.98); }
     iframe { display:block; width:100%; height:100%; border:0; }
     @media(max-width:520px) {
       :host { right:8px; bottom:8px; }
       section { width:calc(100vw - 16px); height:calc(100dvh - 88px); }
     }
+    @media(prefers-reduced-motion:reduce) { button,section { transition:none; } }
   `;
   const panel = document.createElement('section');
   panel.id = 'panel';
