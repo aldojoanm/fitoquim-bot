@@ -1,8 +1,4 @@
 import crypto from 'node:crypto';
-import fs from 'node:fs/promises';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { File } from 'node:buffer';
 import express from 'express';
 
 import {
@@ -28,80 +24,64 @@ const VERSION_API =
 const SECRETO_APP =
   process.env.META_APP_SECRET || '';
 
-const RUTA_PUBLICA = fileURLToPath(new URL('../public', import.meta.url));
-const cacheMedios = new Map();
-const DURACION_MEDIA = 20 * 24 * 60 * 60 * 1000;
+const URL_PUBLICA_BOT = String(
+  process.env.URL_PUBLICA_BOT ||
+    (
+      process.env.RAILWAY_PUBLIC_DOMAIN
+        ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+        : ''
+    ),
+)
+  .trim()
+  .replace(/\/+$/, '');
+
+const mensajesProcesados = [];
+const mensajesProcesadosSet = new Set();
+
+const MAX_MENSAJES_PROCESADOS = 1500;
 
 function diagnosticoSeguro(valor) {
-  let texto = typeof valor === 'string' ? valor : JSON.stringify(valor);
-  for (const secreto of [TOKEN_ACCESO, SECRETO_APP, TOKEN_VERIFICACION]) {
-    if (secreto) texto = texto.replaceAll(secreto, '[oculto]');
+  let texto =
+    typeof valor === 'string'
+      ? valor
+      : JSON.stringify(valor);
+
+  for (const secreto of [
+    TOKEN_ACCESO,
+    SECRETO_APP,
+    TOKEN_VERIFICACION,
+  ]) {
+    if (secreto) {
+      texto = texto.replaceAll(
+        secreto,
+        '[oculto]',
+      );
+    }
   }
+
   return texto;
 }
 
 function registrarErrorMeta(etapa, error) {
-  console.error(`[FITOQUIM] ${etapa}: HTTP ${error.estado || 'no disponible'}`,
-    diagnosticoSeguro(error.datos || { mensaje: error.message }));
+  console.error(
+    `[FITOQUIM] ${etapa}: HTTP ${
+      error.estado || 'no disponible'
+    }`,
+    diagnosticoSeguro(
+      error.datos || {
+        mensaje:
+          error.message ||
+          String(error),
+      },
+    ),
+  );
 }
 
-export async function obtenerMediaId(rutaFoto) {
-  console.log('[FITOQUIM] Foto contacto:', rutaFoto);
-  const ruta = path.resolve(RUTA_PUBLICA, String(rutaFoto || '').replace(/^\/+/, ''));
-  if (!ruta.startsWith(`${RUTA_PUBLICA}${path.sep}`) ||
-      !['.jpg', '.jpeg', '.png'].includes(path.extname(ruta).toLowerCase())) {
-    throw new Error('Ruta de foto WhatsApp inválida.');
-  }
-  const estado = await fs.stat(ruta).catch((error) => {
-    console.error('[FITOQUIM] Archivo foto existe: false');
-    throw error;
-  });
-  console.log('[FITOQUIM] Archivo foto existe:', estado.isFile());
-  if (!estado.isFile()) throw new Error('La foto no es un archivo.');
-  const previo = cacheMedios.get(ruta);
-  if (previo?.mtime === estado.mtimeMs && previo.expira > Date.now()) {
-    console.log('[FITOQUIM] Media ID reutilizado:', await previo.promesa);
-    return previo.promesa;
-  }
-  const promesa = (async () => {
-    const contenido = await fs.readFile(ruta);
-    const mime = contenido.subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff]))
-      ? 'image/jpeg'
-      : contenido.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
-        ? 'image/png' : '';
-    if (!mime) throw new Error('El contenido de la foto no es JPEG ni PNG.');
-    console.log('[FITOQUIM] MIME foto:', mime);
-    const formulario = new FormData();
-    formulario.set('messaging_product', 'whatsapp');
-    formulario.set('file', new File([contenido], path.basename(ruta), { type: mime }));
-    const respuesta = await fetch(endpointMensajes().replace(/\/messages$/, '/media'), {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${TOKEN_ACCESO}` },
-      body: formulario,
-      signal: AbortSignal.timeout(30000),
-    });
-    const datos = await interpretarMeta(respuesta);
-    console.log(`[FITOQUIM] Upload foto: HTTP ${respuesta.status}`, diagnosticoSeguro(datos));
-    if (!datos.id) throw new Error('Meta no devolvió media ID.');
-    console.log('[FITOQUIM] Media ID generado:', datos.id);
-    return String(datos.id);
-  })();
-  cacheMedios.set(ruta, { mtime: estado.mtimeMs, expira: Date.now() + DURACION_MEDIA, promesa });
-  try {
-    return await promesa;
-  } catch (error) {
-    if (cacheMedios.get(ruta)?.promesa === promesa) cacheMedios.delete(ruta);
-    registrarErrorMeta('Error al subir foto', error);
-    throw error;
-  }
-}
-
-const mensajesProcesados = [];
-const mensajesProcesadosSet = new Set();
-const MAX_MENSAJES_PROCESADOS = 1500;
-
-function normalizarTelefono(telefono = '') {
-  return String(telefono).replace(/\D/g, '');
+function normalizarTelefono(
+  telefono = '',
+) {
+  return String(telefono)
+    .replace(/\D/g, '');
 }
 
 function yaFueProcesado(idMensaje) {
@@ -109,12 +89,21 @@ function yaFueProcesado(idMensaje) {
     return false;
   }
 
-  if (mensajesProcesadosSet.has(idMensaje)) {
+  if (
+    mensajesProcesadosSet.has(
+      idMensaje,
+    )
+  ) {
     return true;
   }
 
-  mensajesProcesadosSet.add(idMensaje);
-  mensajesProcesados.push(idMensaje);
+  mensajesProcesadosSet.add(
+    idMensaje,
+  );
+
+  mensajesProcesados.push(
+    idMensaje,
+  );
 
   if (
     mensajesProcesados.length >
@@ -123,7 +112,9 @@ function yaFueProcesado(idMensaje) {
     const antiguo =
       mensajesProcesados.shift();
 
-    mensajesProcesadosSet.delete(antiguo);
+    mensajesProcesadosSet.delete(
+      antiguo,
+    );
   }
 
   return false;
@@ -135,11 +126,15 @@ function verificarFirma(req) {
   }
 
   const recibida = String(
-    req.get('x-hub-signature-256') || '',
+    req.get(
+      'x-hub-signature-256',
+    ) || '',
   ).trim();
 
   if (
-    !recibida.startsWith('sha256=') ||
+    !recibida.startsWith(
+      'sha256=',
+    ) ||
     !req.cuerpoCrudo
   ) {
     return false;
@@ -148,20 +143,33 @@ function verificarFirma(req) {
   const esperada =
     `sha256=${
       crypto
-        .createHmac('sha256', SECRETO_APP)
-        .update(req.cuerpoCrudo)
+        .createHmac(
+          'sha256',
+          SECRETO_APP,
+        )
+        .update(
+          req.cuerpoCrudo,
+        )
         .digest('hex')
     }`;
 
   try {
-    const a = Buffer.from(recibida);
-    const b = Buffer.from(esperada);
+    const a = Buffer.from(
+      recibida,
+    );
+
+    const b = Buffer.from(
+      esperada,
+    );
 
     if (a.length !== b.length) {
       return false;
     }
 
-    return crypto.timingSafeEqual(a, b);
+    return crypto.timingSafeEqual(
+      a,
+      b,
+    );
   } catch {
     return false;
   }
@@ -180,8 +188,11 @@ function endpointMensajes() {
   return `https://graph.facebook.com/${VERSION_API}/${ID_NUMERO_TELEFONO}/messages`;
 }
 
-async function interpretarMeta(respuesta) {
-  const texto = await respuesta.text();
+async function interpretarMeta(
+  respuesta,
+) {
+  const texto =
+    await respuesta.text();
 
   let datos = {};
 
@@ -190,7 +201,9 @@ async function interpretarMeta(respuesta) {
       ? JSON.parse(texto)
       : {};
   } catch {
-    datos = { texto };
+    datos = {
+      texto,
+    };
   }
 
   if (!respuesta.ok) {
@@ -198,7 +211,9 @@ async function interpretarMeta(respuesta) {
       `WhatsApp API ${respuesta.status}: ${diagnosticoSeguro(texto)}`,
     );
 
-    error.estado = respuesta.status;
+    error.estado =
+      respuesta.status;
+
     error.datos = datos;
 
     throw error;
@@ -207,30 +222,52 @@ async function interpretarMeta(respuesta) {
   return datos;
 }
 
-async function enviarMeta(cuerpo) {
-  const respuesta = await fetch(
-    endpointMensajes(),
-    {
-      method: 'POST',
-      headers: {
-        Authorization:
-          `Bearer ${TOKEN_ACCESO}`,
-        'Content-Type':
-          'application/json',
+async function enviarMeta(
+  cuerpo,
+) {
+  const respuesta =
+    await fetch(
+      endpointMensajes(),
+      {
+        method: 'POST',
+        headers: {
+          Authorization:
+            `Bearer ${TOKEN_ACCESO}`,
+          'Content-Type':
+            'application/json',
+        },
+        body: JSON.stringify(
+          cuerpo,
+        ),
+        signal:
+          AbortSignal.timeout(
+            15000,
+          ),
       },
-      body: JSON.stringify(cuerpo),
-      signal:
-        AbortSignal.timeout(15000),
-    },
-  );
+    );
 
-  const datos = await interpretarMeta(respuesta);
-  if (cuerpo.interactive?.type === 'cta_url') {
+  const datos =
+    await interpretarMeta(
+      respuesta,
+    );
+
+  if (
+    cuerpo.interactive?.type ===
+    'cta_url'
+  ) {
     console.log(
-      `[FITOQUIM] Respuesta CTA (header image: ${Boolean(cuerpo.interactive.header?.image?.id)}): HTTP ${respuesta.status}`,
+      `[FITOQUIM] Respuesta CTA (header image link: ${
+        Boolean(
+          cuerpo.interactive
+            ?.header
+            ?.image
+            ?.link,
+        )
+      }): HTTP ${respuesta.status}`,
       diagnosticoSeguro(datos),
     );
   }
+
   return datos;
 }
 
@@ -239,13 +276,19 @@ async function enviarTexto(
   texto,
 ) {
   return enviarMeta({
-    messaging_product: 'whatsapp',
-    recipient_type: 'individual',
-    to: normalizarTelefono(numero),
+    messaging_product:
+      'whatsapp',
+    recipient_type:
+      'individual',
+    to: normalizarTelefono(
+      numero,
+    ),
     type: 'text',
     text: {
       preview_url: false,
-      body: String(texto || '').slice(
+      body: String(
+        texto || '',
+      ).slice(
         0,
         4096,
       ),
@@ -260,29 +303,43 @@ async function enviarBotones(
 ) {
   const botones = opciones
     .slice(0, 3)
-    .map((opcion) => ({
-      type: 'reply',
-      reply: {
-        id: String(
-          opcion.payload || '',
-        ).slice(0, 256),
-        title: String(
-          opcion.etiquetaWhatsApp ||
-          opcion.etiqueta ||
-          '',
-        ).slice(0, 20),
-      },
-    }));
+    .map(
+      (opcion) => ({
+        type: 'reply',
+        reply: {
+          id: String(
+            opcion.payload || '',
+          ).slice(
+            0,
+            256,
+          ),
+          title: String(
+            opcion.etiquetaWhatsApp ||
+              opcion.etiqueta ||
+              '',
+          ).slice(
+            0,
+            20,
+          ),
+        },
+      }),
+    );
 
   return enviarMeta({
-    messaging_product: 'whatsapp',
-    recipient_type: 'individual',
-    to: normalizarTelefono(numero),
+    messaging_product:
+      'whatsapp',
+    recipient_type:
+      'individual',
+    to: normalizarTelefono(
+      numero,
+    ),
     type: 'interactive',
     interactive: {
       type: 'button',
       body: {
-        text: String(texto || '').slice(
+        text: String(
+          texto || '',
+        ).slice(
           0,
           1024,
         ),
@@ -302,42 +359,63 @@ async function enviarLista(
 ) {
   const filas = opciones
     .slice(0, 10)
-    .map((opcion) => ({
-      id: String(
-        opcion.payload || '',
-      ).slice(0, 200),
-      title: String(
-        opcion.etiquetaWhatsApp ||
-        opcion.etiqueta ||
-        '',
-      ).slice(0, 24),
-      ...(opcion.descripcion
-        ? {
-            description:
-              String(
-                opcion.descripcion,
-              ).slice(0, 72),
-          }
-        : {}),
-    }));
+    .map(
+      (opcion) => ({
+        id: String(
+          opcion.payload || '',
+        ).slice(
+          0,
+          200,
+        ),
+        title: String(
+          opcion.etiquetaWhatsApp ||
+            opcion.etiqueta ||
+            '',
+        ).slice(
+          0,
+          24,
+        ),
+        ...(opcion.descripcion
+          ? {
+              description:
+                String(
+                  opcion.descripcion,
+                ).slice(
+                  0,
+                  72,
+                ),
+            }
+          : {}),
+      }),
+    );
 
   return enviarMeta({
-    messaging_product: 'whatsapp',
-    recipient_type: 'individual',
-    to: normalizarTelefono(numero),
+    messaging_product:
+      'whatsapp',
+    recipient_type:
+      'individual',
+    to: normalizarTelefono(
+      numero,
+    ),
     type: 'interactive',
     interactive: {
       type: 'list',
       body: {
-        text: String(texto || '').slice(
+        text: String(
+          texto || '',
+        ).slice(
           0,
           1024,
         ),
       },
       action: {
         button: String(
-          textoBoton || 'Ver opciones',
-        ).slice(0, 20),
+          textoBoton ||
+            'Ver opciones',
+        ).slice(
+          0,
+          20,
+        ),
         sections: [
           {
             title: 'Opciones',
@@ -379,107 +457,247 @@ function urlWhatsApp(contacto) {
   const telefono =
     normalizarTelefono(
       contacto.telefonoDigitos ||
-      contacto.telefono,
+        contacto.telefono,
     );
 
   const mensaje =
     encodeURIComponent(
       contacto.mensajeWhatsApp ||
-      'Hola, vengo del asistente de FITOQUIM.',
+        'Hola, vengo del asistente de FITOQUIM.',
     );
 
   return `https://wa.me/${telefono}?text=${mensaje}`;
 }
 
-function textoContacto(respuesta) {
+function urlFoto(contacto) {
+  if (
+    !URL_PUBLICA_BOT ||
+    !contacto?.fotoWhatsApp
+  ) {
+    return '';
+  }
+
+  const ruta = String(
+    contacto.fotoWhatsApp,
+  ).trim();
+
+  if (!ruta) {
+    return '';
+  }
+
+  const rutaNormalizada =
+    ruta.startsWith('/')
+      ? ruta
+      : `/${ruta}`;
+
+  return `${URL_PUBLICA_BOT}${rutaNormalizada}`;
+}
+
+function textoContacto(
+  respuesta,
+) {
   const partes = [];
 
   if (respuesta.texto) {
-    partes.push(respuesta.texto);
+    partes.push(
+      respuesta.texto,
+    );
   }
 
-  if (respuesta.contacto?.nombre) {
+  if (
+    respuesta.contacto?.nombre
+  ) {
     partes.push(
       `*${respuesta.contacto.nombre}*`,
     );
   }
 
-  if (respuesta.contacto?.cargo) {
+  if (
+    respuesta.contacto?.cargo
+  ) {
     partes.push(
       respuesta.contacto.cargo,
     );
   }
 
-  return partes.join('\n\n');
+  return partes.join(
+    '\n\n',
+  );
 }
 
 function cuerpoContacto(
   numero,
   respuesta,
-  mediaId = '',
+  foto = '',
 ) {
   const contacto =
     respuesta.contacto;
 
-  return {
-    messaging_product: 'whatsapp',
-    recipient_type: 'individual',
-    to: normalizarTelefono(numero),
-    type: 'interactive',
-    interactive: {
-      type: 'cta_url',
-      ...(mediaId
-        ? {
-            header: {
-              type: 'image',
-              image: {
-                id: mediaId,
-              },
-            },
-          }
-        : {}),
-      body: {
-        text: textoContacto(
-          respuesta,
-        ).slice(0, 1024),
-      },
-      action: {
-        name: 'cta_url',
-        parameters: {
-          display_text: 'Contactar',
-          url: urlWhatsApp(contacto),
-        },
+  const interactive = {
+    type: 'cta_url',
+    body: {
+      text: textoContacto(
+        respuesta,
+      ).slice(
+        0,
+        1024,
+      ),
+    },
+    action: {
+      name: 'cta_url',
+      parameters: {
+        display_text:
+          'Contactar',
+        url:
+          urlWhatsApp(
+            contacto,
+          ),
       },
     },
   };
+
+  if (foto) {
+    interactive.header = {
+      type: 'image',
+      image: {
+        link: foto,
+      },
+    };
+  }
+
+  return {
+    messaging_product:
+      'whatsapp',
+    recipient_type:
+      'individual',
+    to: normalizarTelefono(
+      numero,
+    ),
+    type: 'interactive',
+    interactive,
+  };
+}
+
+async function comprobarFotoPublica(
+  url,
+) {
+  if (!url) {
+    return false;
+  }
+
+  try {
+    const respuesta =
+      await fetch(
+        url,
+        {
+          method: 'HEAD',
+          redirect: 'follow',
+          signal:
+            AbortSignal.timeout(
+              10000,
+            ),
+        },
+      );
+
+    const tipo =
+      respuesta.headers.get(
+        'content-type',
+      ) || '';
+
+    console.log(
+      '[FITOQUIM] Foto pública:',
+      url,
+    );
+
+    console.log(
+      '[FITOQUIM] Foto pública HTTP:',
+      respuesta.status,
+    );
+
+    console.log(
+      '[FITOQUIM] Foto pública MIME:',
+      tipo,
+    );
+
+    return (
+      respuesta.ok &&
+      (
+        tipo.startsWith(
+          'image/jpeg',
+        ) ||
+        tipo.startsWith(
+          'image/png',
+        )
+      )
+    );
+  } catch (error) {
+    console.error(
+      '[FITOQUIM] No se pudo validar foto pública:',
+      error?.message ||
+        error,
+    );
+
+    return false;
+  }
 }
 
 export async function enviarContacto(
   numero,
   respuesta,
 ) {
-  const foto = respuesta.contacto?.fotoWhatsApp;
+  const contacto =
+    respuesta.contacto;
+
+  const foto =
+    urlFoto(contacto);
 
   if (foto) {
-    try {
-      const mediaId = await obtenerMediaId(foto);
-      console.log('[FITOQUIM] Enviando CTA con header image.id:', mediaId);
-      const resultado = await enviarMeta(
-        cuerpoContacto(
-          numero,
-          respuesta,
-          mediaId,
-        ),
+    const disponible =
+      await comprobarFotoPublica(
+        foto,
       );
-      return resultado;
-    } catch (error) {
-      registrarErrorMeta('Falló tarjeta con foto; se enviará sin imagen', error);
+
+    if (disponible) {
+      console.log(
+        '[FITOQUIM] Enviando CTA con header image.link:',
+        foto,
+      );
+
+      try {
+        return await enviarMeta(
+          cuerpoContacto(
+            numero,
+            respuesta,
+            foto,
+          ),
+        );
+      } catch (error) {
+        registrarErrorMeta(
+          'Falló tarjeta con foto',
+          error,
+        );
+      }
+    } else {
+      console.warn(
+        '[FITOQUIM] La foto configurada no es accesible públicamente como JPEG/PNG:',
+        foto,
+      );
     }
   } else {
     console.warn(
-      '[FITOQUIM] El contacto no tiene una foto JPG/PNG válida para WhatsApp.',
+      '[FITOQUIM] El contacto no tiene foto pública válida para WhatsApp.',
     );
+
+    if (!URL_PUBLICA_BOT) {
+      console.warn(
+        '[FITOQUIM] Falta URL_PUBLICA_BOT.',
+      );
+    }
   }
+
+  console.warn(
+    '[FITOQUIM] Se enviará CTA sin imagen.',
+  );
 
   return enviarMeta(
     cuerpoContacto(
@@ -499,27 +717,33 @@ async function enviarRespuesta(
   }
 
   if (
-    respuesta.tipo === 'opciones'
+    respuesta.tipo ===
+    'opciones'
   ) {
     await enviarOpciones(
       numero,
       respuesta,
     );
 
-    confirmarEnvio(respuesta);
+    confirmarEnvio(
+      respuesta,
+    );
 
     return;
   }
 
   if (
-    respuesta.tipo === 'contacto'
+    respuesta.tipo ===
+    'contacto'
   ) {
     await enviarContacto(
       numero,
       respuesta,
     );
 
-    confirmarEnvio(respuesta);
+    confirmarEnvio(
+      respuesta,
+    );
 
     if (respuesta.menu) {
       await enviarOpciones(
@@ -527,21 +751,26 @@ async function enviarRespuesta(
         respuesta.menu,
       );
 
-      confirmarEnvio(respuesta);
+      confirmarEnvio(
+        respuesta,
+      );
     }
 
     return;
   }
 
   if (
-    respuesta.tipo === 'texto'
+    respuesta.tipo ===
+    'texto'
   ) {
     await enviarTexto(
       numero,
       respuesta.texto,
     );
 
-    confirmarEnvio(respuesta);
+    confirmarEnvio(
+      respuesta,
+    );
 
     if (respuesta.menu) {
       await enviarOpciones(
@@ -549,45 +778,57 @@ async function enviarRespuesta(
         respuesta.menu,
       );
 
-      confirmarEnvio(respuesta);
+      confirmarEnvio(
+        respuesta,
+      );
     }
-
-    return;
   }
 }
 
-function obtenerEntrada(mensaje) {
+function obtenerEntrada(
+  mensaje,
+) {
   if (!mensaje) {
     return null;
   }
 
-  if (mensaje.type === 'text') {
+  if (
+    mensaje.type === 'text'
+  ) {
     return (
-      mensaje.text?.body || ''
+      mensaje.text?.body ||
+      ''
     );
   }
 
   if (
-    mensaje.type === 'interactive'
+    mensaje.type ===
+    'interactive'
   ) {
     if (
       mensaje.interactive
         ?.button_reply?.id
     ) {
-      return mensaje.interactive
-        .button_reply.id;
+      return mensaje
+        .interactive
+        .button_reply
+        .id;
     }
 
     if (
       mensaje.interactive
         ?.list_reply?.id
     ) {
-      return mensaje.interactive
-        .list_reply.id;
+      return mensaje
+        .interactive
+        .list_reply
+        .id;
     }
   }
 
-  if (mensaje.type === 'button') {
+  if (
+    mensaje.type === 'button'
+  ) {
     return (
       mensaje.button?.payload ||
       mensaje.button?.text ||
@@ -608,7 +849,9 @@ async function procesarMensaje(
 
   if (
     !usuario ||
-    yaFueProcesado(mensaje?.id)
+    yaFueProcesado(
+      mensaje?.id,
+    )
   ) {
     return;
   }
@@ -616,8 +859,12 @@ async function procesarMensaje(
   const respuesta =
     procesarEntrada({
       canal: 'whatsapp',
-      identificador: usuario,
-      texto: obtenerEntrada(mensaje),
+      identificador:
+        usuario,
+      texto:
+        obtenerEntrada(
+          mensaje,
+        ),
     });
 
   if (!respuesta) {
@@ -632,7 +879,8 @@ async function procesarMensaje(
   } catch (error) {
     cancelarRespuesta({
       canal: 'whatsapp',
-      identificador: usuario,
+      identificador:
+        usuario,
       respuesta,
     });
 
@@ -644,11 +892,15 @@ async function procesarWebhook(
   cuerpo,
 ) {
   const entradas =
-    Array.isArray(cuerpo?.entry)
+    Array.isArray(
+      cuerpo?.entry,
+    )
       ? cuerpo.entry
       : [];
 
-  for (const entrada of entradas) {
+  for (
+    const entrada of entradas
+  ) {
     const cambios =
       Array.isArray(
         entrada?.changes,
@@ -656,7 +908,9 @@ async function procesarWebhook(
         ? entrada.changes
         : [];
 
-    for (const cambio of cambios) {
+    for (
+      const cambio of cambios
+    ) {
       if (
         cambio?.field !==
         'messages'
@@ -666,12 +920,15 @@ async function procesarWebhook(
 
       const recibidos =
         Array.isArray(
-          cambio?.value?.messages,
+          cambio?.value
+            ?.messages,
         )
           ? cambio.value.messages
           : [];
 
-      for (const mensaje of recibidos) {
+      for (
+        const mensaje of recibidos
+      ) {
         try {
           await procesarMensaje(
             mensaje,
@@ -680,8 +937,8 @@ async function procesarWebhook(
           console.error(
             '[FITOQUIM] Error procesando mensaje:',
             error?.stack ||
-            error?.message ||
-            error,
+              error?.message ||
+              error,
           );
         }
       }
@@ -707,16 +964,21 @@ router.get(
 
     if (
       modo === 'subscribe' &&
-      token === TOKEN_VERIFICACION
+      token ===
+        TOKEN_VERIFICACION
     ) {
       return res
         .status(200)
         .send(
-          String(desafio || ''),
+          String(
+            desafio || '',
+          ),
         );
     }
 
-    return res.sendStatus(403);
+    return res.sendStatus(
+      403,
+    );
   },
 );
 
@@ -727,24 +989,28 @@ router.post(
       return res
         .status(401)
         .json({
-          error: 'firma_invalida',
+          error:
+            'firma_invalida',
         });
     }
 
-    const cuerpo = req.body;
+    const cuerpo =
+      req.body;
 
     res.sendStatus(200);
 
     procesarWebhook(
       cuerpo,
-    ).catch((error) => {
-      console.error(
-        '[FITOQUIM] Error de webhook:',
-        error?.stack ||
-        error?.message ||
-        error,
-      );
-    });
+    ).catch(
+      (error) => {
+        console.error(
+          '[FITOQUIM] Error de webhook:',
+          error?.stack ||
+            error?.message ||
+            error,
+        );
+      },
+    );
   },
 );
 
