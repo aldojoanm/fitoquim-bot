@@ -27,7 +27,7 @@
   "contactos": {
     "lindsey_vieria": {
       "id": "lindsey_vieria",
-      "nombre": "Lindsey Vieira",
+      "nombre": "Lindsey Viera",
       "cargo": "Ventas Corporativas",
       "empresa": "FITOQUIM SRL",
       "telefono": "+59177661352",
@@ -65,7 +65,7 @@
     },
     "maira_cadima": {
       "id": "maira_cadima",
-      "nombre": "Maira Cadima Fitoquim SRL",
+      "nombre": "Maira Cadima",
       "foto": "/asesores/maira_cadima.webp",
       "cargo": "Atención comercial",
       "empresa": "FITOQUIM SRL",
