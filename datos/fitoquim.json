@@ -32,7 +32,8 @@
       "empresa": "FITOQUIM SRL",
       "telefono": "+59177661352",
       "foto": "/asesores/lindsey_viera.webp",
-      "configurado": true
+      "configurado": true,
+      "foto_whatsapp": "/asesores/lindsey_viera.jpg"
     },
     "luis_castro": {
       "id": "luis_castro",
@@ -41,7 +42,8 @@
       "cargo": "Asesoramiento técnico",
       "empresa": "FITOQUIM SRL",
       "telefono": "+59177661215",
-      "configurado": true
+      "configurado": true,
+      "foto_whatsapp": "/asesores/luis_castro.jpg"
     },
     "guiscela_hurtado": {
       "id": "guiscela_hurtado",
@@ -50,7 +52,8 @@
       "cargo": "Atención comercial",
       "empresa": "FITOQUIM SRL",
       "telefono": "+59175687684",
-      "configurado": true
+      "configurado": true,
+      "foto_whatsapp": "/asesores/guiscela_hurtado.jpg"
     },
     "marco": {
       "id": "marco",
@@ -67,7 +70,8 @@
       "cargo": "Atención comercial",
       "empresa": "FITOQUIM SRL",
       "telefono": "+59178515896",
-      "configurado": true
+      "configurado": true,
+      "foto_whatsapp": "/asesores/maira_cadima.jpg"
     },
     "darwin_salvatierra": {
       "id": "darwin_salvatierra",
@@ -92,7 +96,8 @@
       "cargo": "Atención comercial - Transcontinental Sur",
       "empresa": "FITOQUIM SRL",
       "telefono": "+59177080808",
-      "configurado": true
+      "configurado": true,
+      "foto_whatsapp": "/asesores/robert_ferrufino.jpg"
     },
     "sergio_gutierrez": {
       "id": "sergio_gutierrez",
@@ -101,7 +106,8 @@
       "cargo": "Atención comercial",
       "empresa": "FITOQUIM SRL",
       "telefono": "+59169006073",
-      "configurado": true
+      "configurado": true,
+      "foto_whatsapp": "/asesores/sergio_gutierrez.jpg"
     },
     "manuel_paredes": {
       "id": "manuel_paredes",
@@ -110,7 +116,8 @@
       "cargo": "Atención comercial",
       "empresa": "FITOQUIM SRL",
       "telefono": "+59177661201",
-      "configurado": true
+      "configurado": true,
+      "foto_whatsapp": "/asesores/manuel_paredes.jpg"
     },
     "jorge_rojo": {
       "id": "jorge_rojo",
@@ -119,7 +126,8 @@
       "cargo": "Atención comercial",
       "empresa": "FITOQUIM SRL",
       "telefono": "+59177661217",
-      "configurado": true
+      "configurado": true,
+      "foto_whatsapp": "/asesores/jorge_rojo.jpg"
     }
   },
   "flujo": {
@@ -170,7 +178,8 @@
           ]
         }
       ],
-      "texto_despues_contacto": "¿Qué desea consultar?"
+      "texto_despues_contacto": "¿Necesita realizar otra consulta?\nSeleccione una opción para continuar.",
+      "texto_menu": "Menú principal\nSeleccione una opción para continuar."
     },
     "tipo_asesor": {
       "tipo": "opciones",

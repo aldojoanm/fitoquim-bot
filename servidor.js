@@ -37,6 +37,15 @@ const origenesPermitidos = String(
     return url.origin;
   });
 
+app.use(
+  express.json({
+    limit: '1mb',
+    verify: (req, _res, buffer) => {
+      req.cuerpoCrudo = Buffer.from(buffer);
+    },
+  }),
+);
+
 app.use('/api/chat', (req, res, next) => {
   const origen = req.get('origin');
 
@@ -94,23 +103,75 @@ app.use('/chat', (_req, res, next) => {
   next();
 });
 
-app.use(
-  express.json({
-    limit: '1mb',
+app.get('/', (_req, res) => {
+  res
+    .status(200)
+    .type('html')
+    .send(`
+      <!doctype html>
+      <html lang="es">
+        <head>
+          <meta charset="UTF-8">
+          <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1"
+          >
+          <meta
+            name="theme-color"
+            content="#0b5da6"
+          >
+          <title>FITOQUIM Bot</title>
 
-    verify: (req, _res, buffer) => {
-      req.cuerpoCrudo = Buffer.from(buffer);
-    },
-  }),
-);
+          <style>
+            * {
+              box-sizing: border-box;
+            }
+
+            html,
+            body {
+              width: 100%;
+              min-height: 100%;
+              margin: 0;
+            }
+
+            body {
+              min-height: 100vh;
+              background:
+                radial-gradient(
+                  circle at 10% 10%,
+                  rgba(79, 179, 207, 0.14),
+                  transparent 32%
+                ),
+                radial-gradient(
+                  circle at 90% 90%,
+                  rgba(11, 93, 166, 0.08),
+                  transparent 34%
+                ),
+                #f6f9fb;
+              font-family:
+                Inter,
+                system-ui,
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI",
+                sans-serif;
+            }
+          </style>
+        </head>
+
+        <body>
+          <script
+            src="/widget.js"
+            defer
+          ></script>
+        </body>
+      </html>
+    `);
+});
 
 app.use(
   express.static(RUTA_PUBLICA),
 );
-
-app.get('/', (_req, res) => {
-  res.redirect('/chat/');
-});
 
 app.get('/privacidad', (_req, res) => {
   res.sendFile(
@@ -149,7 +210,9 @@ app.use(
 
     console.error(
       '[FITOQUIM] Error del servidor:',
-      error?.message || error,
+      error?.stack ||
+        error?.message ||
+        error,
     );
 
     res.status(estado).json({
@@ -164,8 +227,8 @@ app.use(
 
 const PUERTO = Number(
   process.env.PORT ||
-  process.env.PUERTO ||
-  3000,
+    process.env.PUERTO ||
+    3000,
 );
 
 const servidor = app.listen(
@@ -178,7 +241,8 @@ const servidor = app.listen(
 
     console.log(
       `[FITOQUIM] Entorno: ${
-        process.env.NODE_ENV || 'desarrollo'
+        process.env.NODE_ENV ||
+        'desarrollo'
       }`,
     );
 
@@ -194,7 +258,9 @@ const servidor = app.listen(
       );
     }
 
-    if (!process.env.META_PHONE_NUMBER_ID) {
+    if (
+      !process.env.META_PHONE_NUMBER_ID
+    ) {
       console.warn(
         '[FITOQUIM] Falta META_PHONE_NUMBER_ID.',
       );
@@ -211,15 +277,20 @@ const servidor = app.listen(
         '[FITOQUIM] Falta META_APP_SECRET.',
       );
     }
+
+    if (!process.env.URL_PUBLICA_BOT) {
+      console.warn(
+        '[FITOQUIM] Falta URL_PUBLICA_BOT.',
+      );
+    }
   },
 );
 
-servidor.on(
-  'error',
-  (error) => {
-    console.error(
-      '[FITOQUIM] No se pudo iniciar el servidor:',
+servidor.on('error', (error) => {
+  console.error(
+    '[FITOQUIM] No se pudo iniciar el servidor:',
+    error?.stack ||
+      error?.message ||
       error,
-    );
-  },
-);
+  );
+});

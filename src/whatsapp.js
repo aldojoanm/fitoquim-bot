@@ -1,8 +1,5 @@
 import crypto from 'node:crypto';
-import fs from 'node:fs';
-import path from 'node:path';
 import express from 'express';
-import { fileURLToPath } from 'node:url';
 
 import {
   cancelarRespuesta,
@@ -13,71 +10,44 @@ import {
 const router = express.Router();
 
 const TOKEN_VERIFICACION =
-  process.env.META_VERIFY_TOKEN ||
-  '';
+  process.env.META_VERIFY_TOKEN || '';
 
 const TOKEN_ACCESO =
-  process.env.META_ACCESS_TOKEN ||
-  '';
+  process.env.META_ACCESS_TOKEN || '';
 
 const ID_NUMERO_TELEFONO =
-  process.env.META_PHONE_NUMBER_ID ||
-  '';
+  process.env.META_PHONE_NUMBER_ID || '';
 
 const VERSION_API =
-  process.env.META_API_VERSION ||
-  'v26.0';
+  process.env.META_API_VERSION || 'v26.0';
 
 const SECRETO_APP =
-  process.env.META_APP_SECRET ||
-  '';
+  process.env.META_APP_SECRET || '';
 
-const RUTA_PUBLICA =
-  fileURLToPath(
-    new URL(
-      '../public/',
-      import.meta.url,
-    ),
-  );
+const URL_PUBLICA_BOT =
+  String(process.env.URL_PUBLICA_BOT || '')
+    .trim()
+    .replace(/\/+$/, '');
 
 const mensajesProcesados = [];
-const mensajesProcesadosSet =
-  new Set();
+const mensajesProcesadosSet = new Set();
+const MAX_MENSAJES_PROCESADOS = 1500;
 
-const MAX_MENSAJES_PROCESADOS =
-  1500;
-
-const mediosSubidos = new Map();
-
-function normalizarTelefono(
-  telefono = '',
-) {
-  return String(telefono)
-    .replace(/\D/g, '');
+function normalizarTelefono(telefono = '') {
+  return String(telefono).replace(/\D/g, '');
 }
 
-function yaFueProcesado(
-  idMensaje,
-) {
+function yaFueProcesado(idMensaje) {
   if (!idMensaje) {
     return false;
   }
 
-  if (
-    mensajesProcesadosSet.has(
-      idMensaje,
-    )
-  ) {
+  if (mensajesProcesadosSet.has(idMensaje)) {
     return true;
   }
 
-  mensajesProcesadosSet.add(
-    idMensaje,
-  );
-
-  mensajesProcesados.push(
-    idMensaje,
-  );
+  mensajesProcesadosSet.add(idMensaje);
+  mensajesProcesados.push(idMensaje);
 
   if (
     mensajesProcesados.length >
@@ -86,9 +56,7 @@ function yaFueProcesado(
     const antiguo =
       mensajesProcesados.shift();
 
-    mensajesProcesadosSet.delete(
-      antiguo,
-    );
+    mensajesProcesadosSet.delete(antiguo);
   }
 
   return false;
@@ -99,60 +67,40 @@ function verificarFirma(req) {
     return true;
   }
 
-  const firmaRecibida = String(
-    req.get(
-      'x-hub-signature-256',
-    ) || '',
+  const recibida = String(
+    req.get('x-hub-signature-256') || '',
   ).trim();
 
   if (
-    !firmaRecibida.startsWith(
-      'sha256=',
-    )
+    !recibida.startsWith('sha256=') ||
+    !req.cuerpoCrudo
   ) {
     return false;
   }
 
-  if (!req.cuerpoCrudo) {
-    return false;
-  }
-
-  const firmaEsperada =
+  const esperada =
     `sha256=${
       crypto
-        .createHmac(
-          'sha256',
-          SECRETO_APP,
-        )
-        .update(
-          req.cuerpoCrudo,
-        )
+        .createHmac('sha256', SECRETO_APP)
+        .update(req.cuerpoCrudo)
         .digest('hex')
     }`;
 
   try {
-    const a = Buffer.from(
-      firmaRecibida,
-    );
-
-    const b = Buffer.from(
-      firmaEsperada,
-    );
+    const a = Buffer.from(recibida);
+    const b = Buffer.from(esperada);
 
     if (a.length !== b.length) {
       return false;
     }
 
-    return crypto.timingSafeEqual(
-      a,
-      b,
-    );
+    return crypto.timingSafeEqual(a, b);
   } catch {
     return false;
   }
 }
 
-function obtenerEndpointMensajes() {
+function endpointMensajes() {
   if (
     !TOKEN_ACCESO ||
     !ID_NUMERO_TELEFONO
@@ -165,22 +113,17 @@ function obtenerEndpointMensajes() {
   return `https://graph.facebook.com/${VERSION_API}/${ID_NUMERO_TELEFONO}/messages`;
 }
 
-async function interpretarRespuestaMeta(
-  respuesta,
-) {
-  const texto =
-    await respuesta.text();
+async function interpretarMeta(respuesta) {
+  const texto = await respuesta.text();
 
-  let datos = null;
+  let datos = {};
 
   try {
     datos = texto
       ? JSON.parse(texto)
       : {};
   } catch {
-    datos = {
-      texto,
-    };
+    datos = { texto };
   }
 
   if (!respuesta.ok) {
@@ -188,9 +131,7 @@ async function interpretarRespuestaMeta(
       `WhatsApp API ${respuesta.status}: ${texto}`,
     );
 
-    error.estado =
-      respuesta.status;
-
+    error.estado = respuesta.status;
     error.datos = datos;
 
     throw error;
@@ -199,203 +140,51 @@ async function interpretarRespuestaMeta(
   return datos;
 }
 
-async function llamarApiWhatsApp(
-  cuerpo,
-) {
-  const respuesta =
-    await fetch(
-      obtenerEndpointMensajes(),
-      {
-        method: 'POST',
-        headers: {
-          Authorization:
-            `Bearer ${TOKEN_ACCESO}`,
-          'Content-Type':
-            'application/json',
-        },
-        body: JSON.stringify(
-          cuerpo,
-        ),
-        signal:
-          AbortSignal.timeout(
-            15000,
-          ),
+async function enviarMeta(cuerpo) {
+  const respuesta = await fetch(
+    endpointMensajes(),
+    {
+      method: 'POST',
+      headers: {
+        Authorization:
+          `Bearer ${TOKEN_ACCESO}`,
+        'Content-Type':
+          'application/json',
       },
-    );
-
-  return interpretarRespuestaMeta(
-    respuesta,
-  );
-}
-
-async function subirImagenWhatsApp(
-  rutaRelativa,
-) {
-  if (
-    !rutaRelativa ||
-    !ID_NUMERO_TELEFONO ||
-    !TOKEN_ACCESO
-  ) {
-    return null;
-  }
-
-  const rutaLimpia =
-    String(rutaRelativa)
-      .replace(/^\/+/, '');
-
-  const rutaFisica =
-    path.resolve(
-      RUTA_PUBLICA,
-      rutaLimpia,
-    );
-
-  if (
-    !rutaFisica.startsWith(
-      RUTA_PUBLICA,
-    ) ||
-    !fs.existsSync(rutaFisica)
-  ) {
-    return null;
-  }
-
-  const extension =
-    path
-      .extname(rutaFisica)
-      .toLowerCase();
-
-  const tipos = {
-    '.jpg': 'image/jpeg',
-    '.jpeg': 'image/jpeg',
-    '.png': 'image/png',
-  };
-
-  const tipo =
-    tipos[extension];
-
-  if (!tipo) {
-    return null;
-  }
-
-  const estadisticas =
-    fs.statSync(rutaFisica);
-
-  const claveCache =
-    `${rutaFisica}:${estadisticas.mtimeMs}`;
-
-  const existente =
-    mediosSubidos.get(
-      claveCache,
-    );
-
-  if (existente) {
-    return existente;
-  }
-
-  const bytes =
-    fs.readFileSync(
-      rutaFisica,
-    );
-
-  const formulario =
-    new FormData();
-
-  formulario.append(
-    'messaging_product',
-    'whatsapp',
+      body: JSON.stringify(cuerpo),
+      signal:
+        AbortSignal.timeout(15000),
+    },
   );
 
-  formulario.append(
-    'file',
-    new Blob(
-      [bytes],
-      {
-        type: tipo,
-      },
-    ),
-    path.basename(
-      rutaFisica,
-    ),
-  );
-
-  const respuesta =
-    await fetch(
-      `https://graph.facebook.com/${VERSION_API}/${ID_NUMERO_TELEFONO}/media`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization:
-            `Bearer ${TOKEN_ACCESO}`,
-        },
-        body: formulario,
-        signal:
-          AbortSignal.timeout(
-            20000,
-          ),
-      },
-    );
-
-  const datos =
-    await interpretarRespuestaMeta(
-      respuesta,
-    );
-
-  const id =
-    datos?.id;
-
-  if (!id) {
-    return null;
-  }
-
-  for (const clave of mediosSubidos.keys()) {
-    if (
-      clave.startsWith(
-        `${rutaFisica}:`,
-      )
-    ) {
-      mediosSubidos.delete(
-        clave,
-      );
-    }
-  }
-
-  mediosSubidos.set(
-    claveCache,
-    id,
-  );
-
-  return id;
+  return interpretarMeta(respuesta);
 }
 
 async function enviarTexto(
-  numeroDestino,
+  numero,
   texto,
 ) {
-  return llamarApiWhatsApp({
-    messaging_product:
-      'whatsapp',
-    recipient_type:
-      'individual',
-    to: normalizarTelefono(
-      numeroDestino,
-    ),
+  return enviarMeta({
+    messaging_product: 'whatsapp',
+    recipient_type: 'individual',
+    to: normalizarTelefono(numero),
     type: 'text',
     text: {
       preview_url: false,
-      body: String(
-        texto || '',
-      ).slice(0, 4096),
+      body: String(texto || '').slice(
+        0,
+        4096,
+      ),
     },
   });
 }
 
 async function enviarBotones(
-  numeroDestino,
+  numero,
   texto,
   opciones,
 ) {
-  const botones = (
-    opciones || []
-  )
+  const botones = opciones
     .slice(0, 3)
     .map((opcion) => ({
       type: 'reply',
@@ -411,21 +200,18 @@ async function enviarBotones(
       },
     }));
 
-  return llamarApiWhatsApp({
-    messaging_product:
-      'whatsapp',
-    recipient_type:
-      'individual',
-    to: normalizarTelefono(
-      numeroDestino,
-    ),
+  return enviarMeta({
+    messaging_product: 'whatsapp',
+    recipient_type: 'individual',
+    to: normalizarTelefono(numero),
     type: 'interactive',
     interactive: {
       type: 'button',
       body: {
-        text: String(
-          texto || '',
-        ).slice(0, 1024),
+        text: String(texto || '').slice(
+          0,
+          1024,
+        ),
       },
       action: {
         buttons: botones,
@@ -435,14 +221,12 @@ async function enviarBotones(
 }
 
 async function enviarLista(
-  numeroDestino,
+  numero,
   texto,
   textoBoton,
   opciones,
 ) {
-  const filas = (
-    opciones || []
-  )
+  const filas = opciones
     .slice(0, 10)
     .map((opcion) => ({
       id: String(
@@ -463,26 +247,22 @@ async function enviarLista(
         : {}),
     }));
 
-  return llamarApiWhatsApp({
-    messaging_product:
-      'whatsapp',
-    recipient_type:
-      'individual',
-    to: normalizarTelefono(
-      numeroDestino,
-    ),
+  return enviarMeta({
+    messaging_product: 'whatsapp',
+    recipient_type: 'individual',
+    to: normalizarTelefono(numero),
     type: 'interactive',
     interactive: {
       type: 'list',
       body: {
-        text: String(
-          texto || '',
-        ).slice(0, 1024),
+        text: String(texto || '').slice(
+          0,
+          1024,
+        ),
       },
       action: {
         button: String(
-          textoBoton ||
-          'Ver opciones',
+          textoBoton || 'Ver opciones',
         ).slice(0, 20),
         sections: [
           {
@@ -496,7 +276,7 @@ async function enviarLista(
 }
 
 async function enviarOpciones(
-  numeroDestino,
+  numero,
   respuesta,
 ) {
   const opciones =
@@ -507,23 +287,21 @@ async function enviarOpciones(
     opciones.length <= 3
   ) {
     return enviarBotones(
-      numeroDestino,
+      numero,
       respuesta.texto,
       opciones,
     );
   }
 
   return enviarLista(
-    numeroDestino,
+    numero,
     respuesta.texto,
     respuesta.textoBotonLista,
     opciones,
   );
 }
 
-function construirUrlWhatsApp(
-  contacto,
-) {
+function urlWhatsApp(contacto) {
   const telefono =
     normalizarTelefono(
       contacto.telefonoDigitos ||
@@ -539,134 +317,132 @@ function construirUrlWhatsApp(
   return `https://wa.me/${telefono}?text=${mensaje}`;
 }
 
-function construirTextoContacto(
-  respuesta,
-) {
+function urlFoto(contacto) {
+  if (
+    !URL_PUBLICA_BOT ||
+    !contacto?.fotoWhatsApp
+  ) {
+    return '';
+  }
+
+  const ruta =
+    contacto.fotoWhatsApp.startsWith('/')
+      ? contacto.fotoWhatsApp
+      : `/${contacto.fotoWhatsApp}`;
+
+  return `${URL_PUBLICA_BOT}${ruta}`;
+}
+
+function textoContacto(respuesta) {
   const partes = [];
 
   if (respuesta.texto) {
-    partes.push(
-      respuesta.texto,
-    );
+    partes.push(respuesta.texto);
   }
 
-  if (
-    respuesta.contacto?.nombre
-  ) {
+  if (respuesta.contacto?.nombre) {
     partes.push(
       `*${respuesta.contacto.nombre}*`,
     );
   }
 
-  if (
-    respuesta.contacto?.cargo
-  ) {
+  if (respuesta.contacto?.cargo) {
     partes.push(
       respuesta.contacto.cargo,
     );
   }
 
-  return partes.join(
-    '\n\n',
-  );
+  return partes.join('\n\n');
 }
 
-async function enviarTarjetaContacto(
-  numeroDestino,
+function cuerpoContacto(
+  numero,
   respuesta,
+  incluirImagen,
 ) {
   const contacto =
     respuesta.contacto;
 
-  const url =
-    construirUrlWhatsApp(
-      contacto,
-    );
+  const foto =
+    urlFoto(contacto);
 
-  let mediaId = null;
-
-  if (
-    contacto.fotoWhatsApp
-  ) {
-    try {
-      mediaId =
-        await subirImagenWhatsApp(
-          contacto.fotoWhatsApp,
-        );
-    } catch (error) {
-      console.error(
-        '[FITOQUIM] No se pudo subir la foto del contacto:',
-        error?.message || error,
-      );
-    }
-  }
-
-  const crearCuerpo = (
-    incluirImagen,
-  ) => ({
-    messaging_product:
-      'whatsapp',
-    recipient_type:
-      'individual',
-    to: normalizarTelefono(
-      numeroDestino,
-    ),
+  return {
+    messaging_product: 'whatsapp',
+    recipient_type: 'individual',
+    to: normalizarTelefono(numero),
     type: 'interactive',
     interactive: {
       type: 'cta_url',
-      ...(incluirImagen &&
-      mediaId
+      ...(incluirImagen && foto
         ? {
             header: {
               type: 'image',
               image: {
-                id: mediaId,
+                link: foto,
               },
             },
           }
         : {}),
       body: {
-        text: construirTextoContacto(
+        text: textoContacto(
           respuesta,
         ).slice(0, 1024),
       },
       action: {
         name: 'cta_url',
         parameters: {
-          display_text:
-            'Contactar',
-          url,
+          display_text: 'Contactar',
+          url: urlWhatsApp(contacto),
         },
       },
     },
-  });
+  };
+}
 
-  if (mediaId) {
+async function enviarContacto(
+  numero,
+  respuesta,
+) {
+  const foto =
+    urlFoto(respuesta.contacto);
+
+  if (foto) {
+    console.log(
+      '[FITOQUIM] Foto WhatsApp:',
+      foto,
+    );
+
     try {
-      return await llamarApiWhatsApp(
-        crearCuerpo(true),
+      return await enviarMeta(
+        cuerpoContacto(
+          numero,
+          respuesta,
+          true,
+        ),
       );
     } catch (error) {
-      if (
-        error?.estado !== 400
-      ) {
-        throw error;
-      }
-
       console.error(
-        '[FITOQUIM] Meta rechazó la imagen integrada. Se enviará la tarjeta sin imagen:',
+        '[FITOQUIM] Meta rechazó la tarjeta con foto:',
         error?.message || error,
       );
     }
+  } else {
+    console.warn(
+      '[FITOQUIM] El contacto no tiene una foto JPG/PNG válida para WhatsApp.',
+    );
   }
 
-  return llamarApiWhatsApp(
-    crearCuerpo(false),
+  return enviarMeta(
+    cuerpoContacto(
+      numero,
+      respuesta,
+      false,
+    ),
   );
 }
 
 async function enviarRespuesta(
-  numeroDestino,
+  numero,
   respuesta,
 ) {
   if (!respuesta) {
@@ -674,126 +450,95 @@ async function enviarRespuesta(
   }
 
   if (
+    respuesta.tipo === 'opciones'
+  ) {
+    await enviarOpciones(
+      numero,
+      respuesta,
+    );
+
+    confirmarEnvio(respuesta);
+
+    return;
+  }
+
+  if (
+    respuesta.tipo === 'contacto'
+  ) {
+    await enviarContacto(
+      numero,
+      respuesta,
+    );
+
+    confirmarEnvio(respuesta);
+
+    if (respuesta.menu) {
+      await enviarOpciones(
+        numero,
+        respuesta.menu,
+      );
+
+      confirmarEnvio(respuesta);
+    }
+
+    return;
+  }
+
+  if (
     respuesta.tipo === 'texto'
   ) {
     await enviarTexto(
-      numeroDestino,
+      numero,
       respuesta.texto,
     );
 
-    confirmarEnvio(
-      respuesta,
-    );
+    confirmarEnvio(respuesta);
 
     if (respuesta.menu) {
       await enviarOpciones(
-        numeroDestino,
+        numero,
         respuesta.menu,
       );
 
-      confirmarEnvio(
-        respuesta,
-      );
+      confirmarEnvio(respuesta);
     }
 
     return;
   }
-
-  if (
-    respuesta.tipo ===
-    'opciones'
-  ) {
-    await enviarOpciones(
-      numeroDestino,
-      respuesta,
-    );
-
-    confirmarEnvio(
-      respuesta,
-    );
-
-    return;
-  }
-
-  if (
-    respuesta.tipo ===
-    'contacto'
-  ) {
-    await enviarTarjetaContacto(
-      numeroDestino,
-      respuesta,
-    );
-
-    confirmarEnvio(
-      respuesta,
-    );
-
-    if (respuesta.menu) {
-      await enviarOpciones(
-        numeroDestino,
-        respuesta.menu,
-      );
-
-      confirmarEnvio(
-        respuesta,
-      );
-    }
-
-    return;
-  }
-
-  await enviarTexto(
-    numeroDestino,
-    TEXTO_FALLBACK,
-  );
-
-  confirmarEnvio(
-    respuesta,
-  );
 }
 
-const TEXTO_FALLBACK =
-  'No pude mostrar esta respuesta. Escribí “menú” para volver al inicio.';
-
-function obtenerEntradaMensaje(
-  mensaje,
-) {
+function obtenerEntrada(mensaje) {
   if (!mensaje) {
     return null;
   }
 
-  if (
-    mensaje.type === 'text'
-  ) {
+  if (mensaje.type === 'text') {
     return (
       mensaje.text?.body || ''
     );
   }
 
   if (
-    mensaje.type ===
-    'interactive'
+    mensaje.type === 'interactive'
   ) {
-    const boton =
+    if (
       mensaje.interactive
-        ?.button_reply?.id;
-
-    if (boton) {
-      return boton;
+        ?.button_reply?.id
+    ) {
+      return mensaje.interactive
+        .button_reply.id;
     }
 
-    const lista =
+    if (
       mensaje.interactive
-        ?.list_reply?.id;
-
-    if (lista) {
-      return lista;
+        ?.list_reply?.id
+    ) {
+      return mensaje.interactive
+        .list_reply.id;
     }
   }
 
-  if (
-    mensaje.type === 'button'
-  ) {
+  if (mensaje.type === 'button') {
     return (
       mensaje.button?.payload ||
       mensaje.button?.text ||
@@ -801,42 +546,29 @@ function obtenerEntradaMensaje(
     );
   }
 
-  return '__ENTRADA_NO_COMPATIBLE__';
+  return 'menu';
 }
 
 async function procesarMensaje(
   mensaje,
 ) {
-  const numeroUsuario =
+  const usuario =
     normalizarTelefono(
       mensaje?.from,
     );
 
-  const idMensaje =
-    mensaje?.id;
-
   if (
-    !numeroUsuario ||
-    yaFueProcesado(idMensaje)
+    !usuario ||
+    yaFueProcesado(mensaje?.id)
   ) {
     return;
   }
 
-  const entrada =
-    obtenerEntradaMensaje(
-      mensaje,
-    );
-
   const respuesta =
     procesarEntrada({
       canal: 'whatsapp',
-      identificador:
-        numeroUsuario,
-      texto:
-        entrada ===
-        '__ENTRADA_NO_COMPATIBLE__'
-          ? 'menu'
-          : entrada,
+      identificador: usuario,
+      texto: obtenerEntrada(mensaje),
     });
 
   if (!respuesta) {
@@ -845,14 +577,13 @@ async function procesarMensaje(
 
   try {
     await enviarRespuesta(
-      numeroUsuario,
+      usuario,
       respuesta,
     );
   } catch (error) {
     cancelarRespuesta({
       canal: 'whatsapp',
-      identificador:
-        numeroUsuario,
+      identificador: usuario,
       respuesta,
     });
 
@@ -864,9 +595,7 @@ async function procesarWebhook(
   cuerpo,
 ) {
   const entradas =
-    Array.isArray(
-      cuerpo?.entry,
-    )
+    Array.isArray(cuerpo?.entry)
       ? cuerpo.entry
       : [];
 
@@ -886,21 +615,21 @@ async function procesarWebhook(
         continue;
       }
 
-      const mensajes =
+      const recibidos =
         Array.isArray(
           cambio?.value?.messages,
         )
           ? cambio.value.messages
           : [];
 
-      for (const mensaje of mensajes) {
+      for (const mensaje of recibidos) {
         try {
           await procesarMensaje(
             mensaje,
           );
         } catch (error) {
           console.error(
-            '[FITOQUIM] Error procesando mensaje de WhatsApp:',
+            '[FITOQUIM] Error procesando mensaje:',
             error?.stack ||
             error?.message ||
             error,
@@ -929,16 +658,12 @@ router.get(
 
     if (
       modo === 'subscribe' &&
-      token &&
-      token ===
-        TOKEN_VERIFICACION
+      token === TOKEN_VERIFICACION
     ) {
       return res
         .status(200)
         .send(
-          String(
-            desafio || '',
-          ),
+          String(desafio || ''),
         );
     }
 
@@ -953,8 +678,7 @@ router.post(
       return res
         .status(401)
         .json({
-          error:
-            'firma_invalida',
+          error: 'firma_invalida',
         });
     }
 
