@@ -4,7 +4,7 @@ import express from 'express';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import whatsappRouter from './src/whatsapp.js';
+import whatsappRouter, { cerrarWhatsApp } from './src/whatsapp.js';
 import webRouter from './src/web.js';
 
 const app = express();
@@ -41,7 +41,9 @@ app.use(
   express.json({
     limit: '1mb',
     verify: (req, _res, buffer) => {
-      req.cuerpoCrudo = Buffer.from(buffer);
+      if (req.originalUrl.startsWith('/webhook/whatsapp')) {
+        req.cuerpoCrudo = buffer;
+      }
     },
   }),
 );
@@ -178,7 +180,13 @@ app.get(['/chat', '/chat/'], (req, res, next) => {
 });
 
 app.use(
-  express.static(RUTA_PUBLICA),
+  express.static(RUTA_PUBLICA, {
+    setHeaders: (res, rutaArchivo) => {
+      if (rutaArchivo.startsWith(`${path.join(RUTA_PUBLICA, 'asesores')}${path.sep}`)) {
+        res.setHeader('Cache-Control', 'public, max-age=3600');
+      }
+    },
+  }),
 );
 
 app.get('/privacidad', (_req, res) => {
@@ -295,6 +303,7 @@ const servidor = app.listen(
 );
 
 servidor.on('error', (error) => {
+  process.exitCode = 1;
   console.error(
     '[FITOQUIM] No se pudo iniciar el servidor:',
     error?.stack ||
@@ -302,3 +311,23 @@ servidor.on('error', (error) => {
       error,
   );
 });
+
+let cerrando = false;
+async function cerrarServidor() {
+  if (cerrando) return;
+  cerrando = true;
+  const limite = setTimeout(() => {
+    console.error('[FITOQUIM] Se agotó el tiempo para terminar los mensajes pendientes.');
+    process.exit(1);
+  }, 15000);
+  limite.unref();
+  await Promise.all([
+    new Promise((resolve) => servidor.close(resolve)),
+    cerrarWhatsApp(),
+  ]);
+  clearTimeout(limite);
+  process.exit(0);
+}
+
+process.on('SIGTERM', cerrarServidor);
+process.on('SIGINT', cerrarServidor);

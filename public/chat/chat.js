@@ -49,10 +49,12 @@ function generarSesion() {
 }
 
 function obtenerSesion() {
-  let sesion =
-    localStorage.getItem(
-      CLAVE_SESION,
-    );
+  let sesion;
+  try {
+    sesion = localStorage.getItem(CLAVE_SESION);
+  } catch {
+    return generarSesion();
+  }
 
   if (
     !sesion ||
@@ -63,10 +65,11 @@ function obtenerSesion() {
     sesion =
       generarSesion();
 
-    localStorage.setItem(
-      CLAVE_SESION,
-      sesion,
-    );
+    try {
+      localStorage.setItem(CLAVE_SESION, sesion);
+    } catch {
+      // El iframe puede tener almacenamiento bloqueado; la sesión sigue en memoria.
+    }
   }
 
   return sesion;
@@ -197,6 +200,7 @@ async function solicitar(
         body: JSON.stringify(
           cuerpo,
         ),
+        signal: AbortSignal.timeout(15000),
       },
     );
 
@@ -240,6 +244,13 @@ async function enviarEntrada(
     );
   }
 
+  const gruposActivos = Array.from(document.querySelectorAll('.opciones-chat.activo'));
+  const restaurarOpciones = () => {
+    for (const grupo of gruposActivos) {
+      grupo.classList.add('activo');
+      grupo.querySelectorAll('button').forEach((boton) => { boton.disabled = false; });
+    }
+  };
   desactivarOpciones();
 
   const indicador =
@@ -259,12 +270,15 @@ async function enviarEntrada(
 
     indicador.remove();
 
+    if (!respuesta) restaurarOpciones();
+
     await renderizarRespuesta(
       respuesta,
       false,
     );
   } catch (error) {
     indicador.remove();
+    restaurarOpciones();
 
     crearMensaje(
       'No pudimos procesar la consulta. Intente nuevamente.',

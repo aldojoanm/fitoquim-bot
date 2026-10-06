@@ -12,6 +12,8 @@ const RUTA_PUBLICA = fileURLToPath(
 
 const DIA_MS = 24 * 60 * 60 * 1000;
 const CINCO_MINUTOS_MS = 5 * 60 * 1000;
+const MAX_SESIONES = 5000;
+let proximaRevisionConfiguracion = 0;
 
 let configuracion = cargarConfiguracion();
 let ultimaModificacion = fs.statSync(RUTA_CONFIGURACION).mtimeMs;
@@ -45,6 +47,10 @@ function cargarConfiguracion() {
 }
 
 function recargarConfiguracion() {
+  const ahora = Date.now();
+  if (ahora < proximaRevisionConfiguracion) return;
+  proximaRevisionConfiguracion = ahora + 1000;
+
   try {
     const modificacion = fs.statSync(RUTA_CONFIGURACION).mtimeMs;
 
@@ -115,10 +121,16 @@ function obtenerSesion(clave) {
   let sesion = sesiones.get(clave);
 
   if (!sesion || sesion.expiraEn <= ahora) {
+    if (!sesion && sesiones.size >= MAX_SESIONES) {
+      const antigua = sesiones.keys().next().value;
+      sesiones.delete(antigua);
+      usoPorUsuario.delete(antigua);
+    }
     sesion = crearSesion();
-    sesiones.set(clave, sesion);
   }
 
+  sesiones.delete(clave);
+  sesiones.set(clave, sesion);
   sesion.expiraEn = ahora + DIA_MS;
 
   return sesion;
@@ -382,6 +394,7 @@ function prepararRespuesta(texto, sesion, esInicio) {
   }
 
   const entrada = String(texto || '').trim();
+  const primeraVez = !sesion.iniciada;
 
   if (!sesion.iniciada && tieneInterpretacion(entrada, 'saludo')) {
     sesion.iniciada = true;
@@ -390,7 +403,7 @@ function prepararRespuesta(texto, sesion, esInicio) {
 
   sesion.iniciada = true;
 
-  if (entrada.startsWith('IR:')) {
+  if (entrada.startsWith('IR:') && configuracion.flujo[entrada.slice(3)]) {
     return construirNodo(entrada.slice(3), sesion);
   }
 
@@ -399,7 +412,7 @@ function prepararRespuesta(texto, sesion, esInicio) {
   }
 
   if (tieneInterpretacion(entrada, 'saludo')) {
-    return construirMenu(sesion, 'normal');
+    return construirNodo(sesion.nodoActual, sesion);
   }
 
   const faq = coincidencias(
@@ -485,14 +498,16 @@ function prepararRespuesta(texto, sesion, esInicio) {
     );
   }
 
-  if (sesion.nodoActual === 'inicio') {
-    return construirMenu(sesion, 'normal');
-  }
+  if (primeraVez) return construirMenu(sesion, 'bienvenida');
 
   return construirNodo(
     sesion.nodoActual,
     sesion,
-    'Seleccione una de las opciones disponibles para continuar.',
+    `No comprendí su mensaje. Seleccione una opción para continuar.\n\n${
+      sesion.nodoActual === 'inicio'
+        ? configuracion.flujo.inicio.texto_menu || 'Menú principal'
+        : nodoActual?.texto || ''
+    }`,
   );
 }
 
@@ -522,6 +537,7 @@ function responder({
   canal = 'web',
   identificador,
   texto = '',
+  textos,
   esInicio = false,
 }) {
   if (!identificador) {
@@ -529,6 +545,29 @@ function responder({
   }
 
   recargarConfiguracion();
+
+  if (Array.isArray(textos)) {
+    let partes = textos.slice(-20).map((parte) => String(parte).trim().slice(0, 1000))
+      .filter((parte) => parte && !configuracion.sin_respuesta?.some(
+        (item) => normalizar(item) === normalizar(parte),
+      ));
+    if (!partes.length) return null;
+    if (partes.length > 1) {
+      const sinCortesias = partes.filter((parte) => !['por favor', 'porfa'].includes(normalizar(parte)));
+      if (sinCortesias.length) partes = sinCortesias;
+    }
+    const ultima = partes.at(-1);
+    if (/^[1-9]$/.test(ultima) || tieneInterpretacion(ultima, 'menu')) {
+      texto = ultima;
+    } else {
+      if (partes.some((parte) => !tieneInterpretacion(parte, 'saludo'))) {
+        partes = partes.filter((parte) => !tieneInterpretacion(parte, 'saludo'));
+      } else {
+        partes = partes.slice(0, 1);
+      }
+      texto = partes.join(' ').slice(0, 4000);
+    }
+  }
 
   if (
     !esInicio &&
@@ -541,9 +580,15 @@ function responder({
 
   const clave = `${canal}:${identificador}`;
   const sesion = obtenerSesion(clave);
+  const estadoAnterior = { nodoActual: sesion.nodoActual, iniciada: sesion.iniciada };
 
   if (canal === 'whatsapp' && !limitesWhatsAppActivos()) {
-    return prepararRespuesta(texto, sesion, esInicio);
+    const respuesta = prepararRespuesta(texto, sesion, esInicio);
+    reservas.set(respuesta, {
+      clave, estadoAnterior, reservadas: [], confirmadas: 0,
+      cantidad: contarMensajesWhatsApp(respuesta),
+    });
+    return respuesta;
   }
 
   const ahora = Date.now();
@@ -573,7 +618,6 @@ function responder({
     (item) => ahora - item.momento < CINCO_MINUTOS_MS,
   );
 
-  const nodoAnterior = sesion.nodoActual;
   const propuesta = prepararRespuesta(texto, sesion, esInicio);
 
   const cantidad =
@@ -616,7 +660,7 @@ function responder({
   }
 
   if (bloqueoHasta) {
-    sesion.nodoActual = nodoAnterior;
+    Object.assign(sesion, estadoAnterior);
   }
 
   const respuesta = bloqueoHasta
@@ -640,8 +684,10 @@ function responder({
 
   reservas.set(respuesta, {
     clave,
+    estadoAnterior,
     reservadas,
     confirmadas: 0,
+    cantidad: cantidadReservada,
   });
 
   return respuesta;
@@ -662,6 +708,8 @@ export function cancelarRespuesta({
   }
 
   const registro = usoPorUsuario.get(reserva.clave);
+  const sesion = sesiones.get(reserva.clave);
+  if (sesion && !reserva.confirmadas) Object.assign(sesion, reserva.estadoAnterior);
 
   if (registro) {
     const pendientes = reserva.reservadas.slice(
@@ -689,7 +737,7 @@ export function confirmarEnvio(respuesta) {
 
   reserva.confirmadas += 1;
 
-  if (reserva.confirmadas >= reserva.reservadas.length) {
+  if (reserva.confirmadas >= reserva.cantidad) {
     reservas.delete(respuesta);
   }
 }
